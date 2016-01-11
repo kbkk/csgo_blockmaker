@@ -1063,7 +1063,7 @@ SaveBlocks(bool:msg = false)
 				KvSetNum(g_hBlocksKV, "transparency", Block_Transparency[i])
 
 			decl String:propnum[12];
-			for(new j = 0; j < MAXPROPERTIES; i++) {
+			for(new j = 0; j < MAXPROPERTIES; j++) {
 				Format(propnum, sizeof(propnum), "property%i", j);
 				KvSetFloat(g_hBlocksKV, propnum, g_fPropertyValue[i][j]);
 			}
