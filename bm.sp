@@ -2968,32 +2968,21 @@ public Action:JumpPlayer(Handle:timer, any:pack)
 	ResetPack(pack)
 	new client = ReadPackCell(pack)
 	new block = ReadPackCell(pack)
-	if (IsClientInGame(client) && IsValidBlock(block))
-	{
-		decl Float:block_loc[3]
-		GetEntPropVector(block, Prop_Send, "m_vecOrigin", block_loc);
-		decl Float:player_loc[3]
-		GetClientAbsOrigin(client, player_loc)
-		player_loc[2] += TrueForce;
-		if (!(player_loc[2] <= block_loc[2]))
-		{
-			new Float:fVelocity[3];
-			GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVelocity);
-			fVelocity[0] *= 1.5;
-			fVelocity[1] *= 1.5;
-			fVelocity[2] = TrampolineForce[block]
-			TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, fVelocity);
-		}
-		else
-		{
-			new Float:fVelocity[3];
-			GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVelocity);
-			fVelocity[0] *= 1.25;
-			fVelocity[1] *= 1.25;
-			fVelocity[2] = 300.0
-			TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, fVelocity);
-		}
-	}
+
+	new Float:fAngles[3];
+	GetClientEyeAngles(client, fAngles);
+
+	new Float:fVelocity[3];
+	GetAngleVectors(fAngles, fVelocity, NULL_VECTOR, NULL_VECTOR);
+
+	GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVelocity);
+
+	fVelocity[0] *= 1.15;
+	fVelocity[1] *= 1.15;
+	fVelocity[2] = g_fPropertyValue[block][0];
+
+	TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, fVelocity);
+
 	return Plugin_Stop;
 }
 
