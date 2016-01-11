@@ -187,10 +187,10 @@ enum BlockSizes {
 }
 
 new const String:BlockDirName[_:BlockSizes][] =  {
-	"_normal",
-	"_pole",
-	"_small",
-	"111_large"
+	"normal",
+	"pole",
+	"small",
+	"large"
 }
 
 #define	 HEGrenadeOffset		14	// (14 * 4)
@@ -1925,7 +1925,7 @@ CreateBlock(client, blocktype = 0, blocksize = _:BLOCK_NORMAL, Float:fPos[3] =  
 	new block_entity = CreateEntityByName("prop_physics_override");
 
 	new String:sModel[256];
-	Format(sModel, sizeof(sModel), "%s%s/%s", g_eBlocks[blocktype][ModelPathPrefix], BlockDirName[blocksize], g_eBlocks[blocktype][ModelName]);
+	Format(sModel, sizeof(sModel), "%s_%s/%s", g_eBlocks[blocktype][ModelPathPrefix], BlockDirName[blocksize], g_eBlocks[blocktype][ModelName]);
 	DispatchKeyValue(block_entity, "model", sModel);
 
 	TeleportEntity(block_entity, vecPos, fAng, NULL_VECTOR);
