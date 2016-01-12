@@ -1,0 +1,236 @@
+"Blocks"
+{
+	"Platform" // 1
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"0"
+	}
+
+	"Bhop" // 2
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"bunnyhop.mdl"
+		"sound"		""
+		"cooldown"	"1.0"
+		"effect"	"0.1"
+	}
+
+	"Damage" // 3
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"damage.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"1.0"
+	}
+
+	"Health" // 4
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"heal.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"1.0"
+	}
+
+	"Ice" // 5
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"ice.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"0"
+	}
+
+	"Tramp" // 6
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"trampoline.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"0"
+	}
+
+	"Speedboost" // 7
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"speedboost.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"0"
+	}
+
+	"Invincibility" // 8
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		"sound/test11_normal/invincibility.mp3"
+		"cooldown"	"60.0"
+		"effect"	"12.0"
+	}
+
+	"Stealth" // 9
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		"sound/test11_normal/stealth.mp3"
+		"cooldown"	"60.0"
+		"effect"	"10.0"
+	}
+
+	"Death" // 10
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"death.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"0"
+	}
+
+	"gravity" // 11
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"0"
+	}
+
+	"CTBarrier" // 12
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"0"
+	}
+
+	"TBarrier" // 13
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"0"
+	}
+
+	"Speed" // 14
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		"sound/test11_normal/bootsofspeed.mp3"
+		"cooldown"	"60.0"
+		"effect"	"10.0"
+	}
+
+	"Glass" // 15
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"0"
+	}
+
+	"NoSlowDown" // 16
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		""
+		"cooldown"	"1.0"
+		"effect"	"0.1"
+	}
+
+	"NoFallDmg" // 17
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"0"
+	}
+
+	"Honey" // 18
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"honey.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"0"
+	}
+
+	"Camouflage" // 19
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		"sound/test11_normal/camouflage.mp3"
+		"cooldown"	"60.0"
+		"effect"	"15.0"
+	}
+
+	"Deagle" // 20
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"0"
+	}
+
+	"AWP" // 21
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"0"
+	}
+
+	"Random" // 22
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"0"
+	}
+
+        "HE" // 23
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"0"
+	}
+
+        "Flash" // 24
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"0"
+	}
+
+  "Frost" // 25
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		""
+		"cooldown"	"0"
+		"effect"	"0"
+	}
+
+	"Delayed" // 26
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"bunnyhop.mdl"
+		"sound"		""
+		"cooldown"	"3.0"
+		"effect"	"5.0"
+	}
+}
