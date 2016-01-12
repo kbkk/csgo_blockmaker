@@ -111,8 +111,8 @@ new const String:g_sPropertyName[_:BlockTypes][MAXPROPERTIES][64] =
 new const Float:g_fPropertyDefault[_:BlockTypes][MAXPROPERTIES] = {
 	{0.0, 0.0, 0.0},
 	{0.1, 1.0, 0.0},
-	{1.0, 0.5, 0.0},
 	{5.0, 2.0, 0.0},
+	{1.0, 0.5, 0.0},
 	{0.0, 0.0, 0.0},
 	{300.0, 0.0, 0.0},
 	{300.0, 300.0, 0.0},
@@ -370,11 +370,19 @@ public Action:OnSayCmd(client, const String:command[], argc)
 	if(g_iClInputting[client] == -1)
 		return Plugin_Continue;
 
-	if(!IsValidBlock(g_iClCurrentBlock[client]))
-		PrintToChat(client, "%s Couldn't input property. Block is NOT valid.", PREFIX);
-
 	decl String:arg[8];
 	GetCmdArg(1, arg, sizeof(arg));
+
+	if(!IsCharNumeric(arg[0])) {
+		PrintToChat(client, "%s Wrong value detected. Property inputting canceled.", PREFIX);
+		g_iClInputting[client] = -1;
+		return Plugin_Continue;
+	}
+
+	if(!IsValidBlock(g_iClCurrentBlock[client])) {
+		PrintToChat(client, "%s Couldn't input property. Block is NOT valid.", PREFIX);
+		return Plugin_Handled;
+	}
 
 	new block = g_iClCurrentBlock[client];
 	new blocktype = g_iBlocks[block];
