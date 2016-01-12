@@ -1682,11 +1682,11 @@ public Action:OnStartTouch(block, client)
 		}
 		case BUNNYHOP_DELAYED: {
 			g_bTriggered[block] = true;
-			CreateTimer(g_eBlocks[1][EffectTime], StartNoBlock, block);
+			CreateTimer(g_fPropertyValue[block][0], StartNoBlock, block);
 		}
 		case BUNNYHOP_NSD: {
 			g_bTriggered[block] = true;
-			CreateTimer(g_eBlocks[18][EffectTime], StartNoBlock, block);
+			CreateTimer(g_fPropertyValue[block][0], StartNoBlock, block);
 			SetEntPropFloat(client, Prop_Send, "m_flStamina", 0.0);
 		}
 		default: {
