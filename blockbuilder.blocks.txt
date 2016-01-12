@@ -228,7 +228,7 @@
 	"Delayed" // 26
 	{
 		"model_pathprefix"	"models/arclhns"
-		"model_name"		"bunnyhop.mdl"
+		"model_name"		"delayedbunnyhop.mdl"
 		"sound"		""
 		"cooldown"	"3.0"
 		"effect"	"5.0"
