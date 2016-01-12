@@ -1626,7 +1626,7 @@ public Action:OnStartTouch(block, client)
 		return Plugin_Continue;
 	}
 
-	if (!IsClientInGame(client)) {
+	if (client > MAXPLAYERS || !IsClientInGame(client)) {
 		return Plugin_Continue;
 	}
 
@@ -2096,7 +2096,7 @@ public Action:OnTouch(block, client)
 		return Plugin_Continue;
 	}
 
-	if (!IsClientInGame(client)) {
+	if (client > MAXPLAYERS || !IsClientInGame(client)) {
 		return Plugin_Continue;
 	}
 
@@ -2237,7 +2237,7 @@ public Action:OnEndTouch(block, client)
 		return Plugin_Continue;
 	}
 
-	if (!IsClientInGame(client)) {
+	if (client > MAXPLAYERS || !IsClientInGame(client)) {
 		return Plugin_Continue;
 	}
 
