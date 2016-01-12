@@ -848,12 +848,6 @@ LoadBlocks(bool:msg = false)
 		PrintToChatAll("\x03%s\x04 %d blocks and %d pair of teleporters were loaded.", CHAT_TAG, blocks, teleporters);
 }
 
-//public Action:ResetPerform(Handle:timer, any:client)
-//{
-//	if(!DuckHop[client])
-//		DuckHop_Perform[client] = false
-//}
-
 public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon)
 {
 	new Float:fPos[3];
@@ -861,45 +855,11 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 	GetClientAbsOrigin(client, fPos);
 	fPos[2] += 50.0;
 
-	//new block_ent = GetClientAimTarget(client, false);
-
 	for (new a = MaxClients + 1; a < 2048; ++a)
 	{
 		if (GetClientTeam(client) < 2)
 			continue;
 
-		if (g_iBlocks[a] == 10)
-		{
-			GetEntPropVector(a, Prop_Data, "m_vecOrigin", fPos2);
-			if (fPos[0] - 20.0 < fPos2[0] < fPos[0] + 20.0 && fPos[1] - 20.0 < fPos2[1] < fPos[1] + 20.0 && fPos[2] - 60.0 < fPos2[2] < fPos[2] + 60.0)
-			{
-				new iTeam = GetClientTeam(client);
-				if (iTeam == 2)
-					PrintToChatAll("\x03%s\x04 %N has nuked the Counter-Terrorist team.", CHAT_TAG, client);
-				else if (iTeam == 3)
-					PrintToChatAll("\x03%s\x04 %N has nuked the Terrorist team.", CHAT_TAG, client);
-
-				g_iBlocks[a] = 0;
-
-				EmitSoundToAll(NUKE_SOUND_PATH)
-
-				for (new i = 1; i <= MaxClients; ++i)
-				{
-					if (IsClientInGame(i))
-					{
-						if (IsPlayerAlive(i))
-						{
-							if ((iTeam == 2 && GetClientTeam(i) == 3) || (iTeam == 3 && GetClientTeam(i) == 2))
-							{
-								if (!g_bInv[i])
-									ForcePlayerSuicide(i);
-							}
-						}
-					}
-				}
-				break;
-			}
-		}
 		else if (g_iBlocks[a] == 14 || g_iBlocks[a] == 43 || g_iBlocks[a] == 72 || g_iBlocks[a] == 101) // CT Barrier
 		{
 			if (GetClientTeam(client) == 3)
@@ -968,8 +928,6 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 					TeleportEntity(client, fPos2, NULL_VECTOR, NULL_VECTOR);
 					TeleportEntity(client, fPos2, NULL_VECTOR, Vec);
 
-					PrintToChat(client, "%f %f %f", Vec[0], Vec[1], Vec[2]);
-
 					EmitSoundToClient(client, TELE_SOUND_PATH);
 				}
 			}
@@ -979,13 +937,6 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 	{
 		if (IsValidEdict(g_iDragEnt[client]))
 		{
-			//	new ent = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
-			//	if(ent != -1)
-			//	{
-			//		SetEntPropFloat(ent, Prop_Send, "m_flNextPrimaryAttack", 10000.0);
-			//		SetEntPropFloat(ent, Prop_Send, "m_flNextSecondaryAttack", 10000.0);
-			//	}
-
 			new Float:vecDir[3], Float:vecPos[3], Float:vecVel[3];
 			new Float:viewang[3];
 
@@ -993,17 +944,9 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 			GetAngleVectors(viewang, vecDir, NULL_VECTOR, NULL_VECTOR);
 			GetClientEyePosition(client, vecPos);
 
-			/*vecPos[0] += vecDir[0] * 100;
-			vecPos[1] += vecDir[1] * 100;
-			vecPos[2] += vecDir[2] * 100;*/
-
-
 			vecPos[0] += vecDir[0] * g_fGrabOffset[client];
 			vecPos[1] += vecDir[1] * g_fGrabOffset[client];
 			vecPos[2] += (vecDir[2]) * g_fGrabOffset[client];
-
-			//PrintToChat(client, "position vector: %f %f %f", vecPos[0], vecPos[1], vecPos[2]);
-			//PrintToChat(client, "direction vector: %f %f %f", vecDir[0], vecDir[1], vecDir[2]);
 
 			GetEntPropVector(g_iDragEnt[client], Prop_Send, "m_vecOrigin", vecDir);
 
