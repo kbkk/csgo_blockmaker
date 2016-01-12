@@ -1658,7 +1658,7 @@ public Action:OnStartTouch(block, client)
 		case DEATH: {
 			if (IsClientInGame(client) && IsPlayerAlive(client))
 			{
-				if (!g_bInv[client] && GetEntProp(client, Prop_Data, "m_takedamage", 1) != 0) {
+				if (!g_bInv[client]) {
 					SDKHooks_TakeDamage(client, 0, 0, 10000.0);
 				}
 			}
@@ -1808,7 +1808,7 @@ public Action:OnStartTouch(block, client)
 				}
 				else if (random == 5)
 				{
-					if (!g_bInv[client])
+					if (!g_bInv[client] && GetEntProp(client, Prop_Data, "m_takedamage", 1) != 0)
 					{
 						SDKHooks_TakeDamage(client, 0, 0, 10000.0);
 						PrintToChat(client, "\x03%s\x04 You've rolled a Death from Random Block!", CHAT_TAG);
@@ -2127,12 +2127,13 @@ public Action:OnTouch(block, client)
 		} else if (g_iBlocks[block] == 8 || g_iBlocks[block] == 38 || g_iBlocks[block] == 67 || g_iBlocks[block] == 96)
 		{
 		}
-		else if (g_iBlocks[block] == 9 || g_iBlocks[block] == 29 || g_iBlocks[block] == 58 || g_iBlocks[block] == 87) // DEATHBLOCK
+		else if (g_iBlocks[block] == _:DEATH) // DEATHBLOCK
 		{
-			if (IsClientInGame(client) && IsPlayerAlive(client))
+			if (IsPlayerAlive(client))
 			{
-				if (!g_bInv[client]) {
-					if (GetEntityFlags(client) & FL_ONGROUND) {
+				if (!g_bInv[client] && GetEntProp(client, Prop_Data, "m_takedamage", 1) != 0) {
+					if ((GetEntityFlags(client) & FL_ONGROUND)
+					&& GetEntPropEnt(client, Prop_Send, "m_hGroundEntity") == block) {
 						SDKHooks_TakeDamage(client, 0, 0, 10000.0);
 					}
 				}
