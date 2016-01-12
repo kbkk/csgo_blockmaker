@@ -111,7 +111,7 @@ new const String:g_sPropertyName[_:BlockTypes][MAXPROPERTIES][64] =
 new const Float:g_fPropertyDefault[_:BlockTypes][MAXPROPERTIES] = {
 	{0.0, 0.0, 0.0},
 	{0.1, 1.0, 0.0},
-	{5.0, 2.0, 0.0},
+	{1.0, 0.5, 0.0},
 	{5.0, 2.0, 0.0},
 	{0.0, 0.0, 0.0},
 	{300.0, 0.0, 0.0},
