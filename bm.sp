@@ -396,6 +396,7 @@ public Action:OnSayCmd(client, const String:command[], argc)
 	PREFIX, g_sPropertyName[blocktype][propnum], BlockNames[blocktype], newval);
 
 	g_iClInputting[client] = -1;
+	ShowPropertyMenu(client);
 
 	return Plugin_Handled;
 }
