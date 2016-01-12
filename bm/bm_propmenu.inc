@@ -14,6 +14,9 @@ public ShowPropertyMenu(client)
 	for(new i = 0; i < MAXPROPERTIES; i++) {
 		IntToString(i, tmp, sizeof(tmp));
 
+		if(strlen(g_sPropertyName[blocktype][i]) == 0)
+			break;
+
 		Format(buffer, sizeof(buffer), "%s: %.1f", g_sPropertyName[blocktype][i], g_fPropertyValue[block][i]);
 		AddMenuItem(menu, tmp, buffer);
 	}
