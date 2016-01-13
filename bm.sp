@@ -89,7 +89,7 @@ new const String:g_sPropertyName[_:BlockTypes][MAXPROPERTIES][64] =
 	{"Force", "Speed", ""},
 	{"Time", "Cooldown", ""},
 	{"Time", "Cooldown", ""},
-	{"", "", ""},
+	{"Kills with godmode", "", ""},
 	{"", "", ""},
 	{"", "", ""},
 	{"", "", ""},
@@ -228,8 +228,7 @@ new g_iCurrentTele[MAXPLAYERS + 1] =  { -1, ... };
 new g_iBeamSprite = 0;
 new CurrentModifier[MAXPLAYERS + 1] = 0
 new Float:TrampolineForce[2048] = 0.0
-new Float:SpeedBoostForce_1[2048] = 0.0
-new Float:SpeedBoostForce_2[2048] = 0.0
+
 //new Float:velocity_duck = 0.0
 new Block_Transparency[2048] = 0
 new Float:g_fGrabOffset[MAXPLAYERS + 1];
@@ -1649,7 +1648,7 @@ public Action:OnStartTouch(block, client)
 
 	switch(g_iBlocks[block]) {
 		case TRAMPOLINE: {
-			CreateTimer(0.0, JumpPlayer, pack)
+			CreateTimer(0.0, Trampoline_Action, pack)
 			g_bNoFallDmg[client] = true;
 		}
 		case SPEEDBOOST: {
@@ -2008,13 +2007,6 @@ public Action:OnStartTouch(block, client)
 			}
 		}
 	}
-
-	else if (g_iBlocks[block] == 28 || g_iBlocks[block] == 57 || g_iBlocks[block] == 86 || g_iBlocks[block] == 115) // Delayed
-	{
-		g_bTriggered[block] = true;
-		CreateTimer(SpeedBoostForce_1[block], StartNoBlock, block);
-	}
-
 	return Plugin_Continue;
 }
 
@@ -2106,6 +2098,16 @@ public Action:OnTouch(block, client)
 		return Plugin_Continue;
 	}
 
+	switch(g_iBlocks[block]) {
+		case TRAMPOLINE: {
+			DataPack pack = CreateDataPack();
+			pack.WriteCell(client);
+			pack.WriteCell(block);
+
+			CreateTimer(0.0, Trampoline_Action, pack);
+			g_bNoFallDmg[client] = true;
+		}
+	}
 	Block_Touching[client] = g_iBlocks[block]
 
 		if (g_iBlocks[block] == 1 || g_iBlocks[block] == 31 || g_iBlocks[block] == 89 || g_iBlocks[block] == 60)
@@ -2617,17 +2619,17 @@ public Action:BoostPlayer(Handle:timer, any:pack)
 	return Plugin_Stop;
 }
 
-public Action:JumpPlayer(Handle:timer, any:pack)
+public Action:Trampoline_Action(Handle:timer, any:pack)
 {
 	ResetPack(pack)
 	new client = ReadPackCell(pack)
 	new block = ReadPackCell(pack)
-
-	new Float:fAngles[3];
-	GetClientEyeAngles(client, fAngles);
+	CloseHandle(pack);
+	//new Float:fAngles[3];
+	//GetClientEyeAngles(client, fAngles);
 
 	new Float:fVelocity[3];
-	GetAngleVectors(fAngles, fVelocity, NULL_VECTOR, NULL_VECTOR);
+	//GetAngleVectors(fAngles, fVelocity, NULL_VECTOR, NULL_VECTOR);
 
 	GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVelocity);
 
