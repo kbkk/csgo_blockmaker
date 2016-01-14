@@ -1500,7 +1500,7 @@ CreateTeleportEntrance(client, Float:fPos[3] =  { 0.0, 0.0, 0.0 } )
 	SetEntityMoveType(ent, MOVETYPE_NONE);
 	AcceptEntityInput(ent, "disablemotion");
 	//SetEntProp(ent, Prop_Data, "m_CollisionGroup", 2);
-	SetEntProp(ent, Prop_Send, "m_usSolidFlags", 12); //FSOLID_NOT_SOLID|FSOLID_TRIGGER
+	SetEntProp(ent, Prop_Send, "m_usSolidFlags", FSOLID_TRIGGER);
 	SetEntProp(ent, Prop_Data, "m_nSolidType", 6); // SOLID_VPHYSICS
 	SetEntProp(ent, Prop_Send, "m_CollisionGroup", 1); //COLLISION_GROUP_DEBRIS
 
@@ -1537,7 +1537,7 @@ CreateTeleportExit(client, Float:fPos[3] =  { 0.0, 0.0, 0.0 } )
 	SetEntityMoveType(ent, MOVETYPE_NONE);
 	AcceptEntityInput(ent, "disablemotion");
 	//SetEntProp(ent, Prop_Data, "m_CollisionGroup", 2);
-	SetEntProp(ent, Prop_Send, "m_usSolidFlags", 12); //FSOLID_NOT_SOLID|FSOLID_TRIGGER
+	SetEntProp(ent, Prop_Send, "m_usSolidFlags", FSOLID_TRIGGER);
 	SetEntProp(ent, Prop_Data, "m_nSolidType", 6); // SOLID_VPHYSICS
 	SetEntProp(ent, Prop_Send, "m_CollisionGroup", 1); //COLLISION_GROUP_DEBRIS
 
