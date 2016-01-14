@@ -14,9 +14,6 @@
 #define PREFIX "\x03[BlockBuilder]\x04 "
 #define MESS "[BlockBuilder] %s"
 
-new currentEnt[MAXPLAYERS + 1];
-new Unit_Rotation[MAXPLAYERS + 1];
-
 enum BlockTypes {
 	PLATFORM,
 	BUNNYHOP,
@@ -227,8 +224,6 @@ new g_iPrimaryAmmoType;
 new g_iCurrentTele[MAXPLAYERS + 1] =  { -1, ... };
 new g_iBeamSprite = 0;
 new CurrentModifier[MAXPLAYERS + 1] = 0
-new Float:TrampolineForce[2048] = 0.0
-
 //new Float:velocity_duck = 0.0
 new Block_Transparency[2048] = 0
 new Float:g_fGrabOffset[MAXPLAYERS + 1];
@@ -265,7 +260,6 @@ new Handle:g_hClientMenu[MAXPLAYERS + 1];
 new Handle:g_hBlocksKV = INVALID_HANDLE;
 new Handle:g_hTeleSound = INVALID_HANDLE;
 
-new Handle:Cvar_Prefix;
 new Handle:Cvar_Height;
 new Handle:Cvar_RandomTime;
 new Float:TrueForce
@@ -274,6 +268,7 @@ new Float:randomblock_time = 0.0;
 new RoundIndex = 0; // Quite lazy way yet effective one
 
 #include "bm/bm_propmenu"
+#include "bm/bm_readonlyproppanel"
 
 public Plugin:myinfo =
 {
@@ -331,7 +326,7 @@ public OnPluginStart()
 
 	if (!KvGotoFirstSubKey(kv))
 	{
-		PrintToServer("No first subkey");
+		PrintToServer("[BlockMaker] The config file seems to be empty :O");
 		return;
 	}
 
@@ -850,7 +845,15 @@ LoadBlocks(bool:msg = false)
 
 public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon)
 {
-	new Float:fPos[3];
+	if(buttons & IN_USE) {
+		new ent = GetClientAimTarget2(client, false);
+
+		if(!IsValidBlock(ent))
+			return Plugin_Continue;
+
+		ShowReadOnlyPropertyPanelAiming(client);
+	}
+	/*new Float:fPos[3];
 	new Float:fPos2[3];
 	GetClientAbsOrigin(client, fPos);
 	fPos[2] += 50.0;
@@ -912,27 +915,8 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 					CreateTimer(0.2, ResetNoFall, client);
 				g_bNoFallDmg[client] = true;
 			}
-		} else if (g_iTeleporters[a] > 1 && 2 <= GetClientTeam(client) <= 3)
-		{
-			GetEntPropVector(a, Prop_Data, "m_vecOrigin", fPos2);
-			if (IsValidBlock(g_iTeleporters[a]))
-			{
-				if (fPos[0] - 32.0 < fPos2[0] < fPos[0] + 32.0 && fPos[1] - 32.0 < fPos2[1] < fPos[1] + 32.0 && fPos[2] - 64.0 < fPos2[2] < fPos[2] + 64.0)
-				{
-					new String:sound[512], Float:Vec[3];
-					GetConVarString(g_hTeleSound, sound, sizeof(sound));
-					GetEntPropVector(g_iTeleporters[a], Prop_Data, "m_vecOrigin", fPos2);
-
-					GetEntPropVector(client, Prop_Data, "m_vecVelocity", Vec);
-					Vec[2] = FloatAbs(Vec[2])*1.0;
-					TeleportEntity(client, fPos2, NULL_VECTOR, NULL_VECTOR);
-					TeleportEntity(client, fPos2, NULL_VECTOR, Vec);
-
-					EmitSoundToClient(client, TELE_SOUND_PATH);
-				}
-			}
 		}
-	}
+	}*/
 	if (g_iDragEnt[client] != 0)
 	{
 		if (IsValidEdict(g_iDragEnt[client]))
@@ -1515,7 +1499,10 @@ CreateTeleportEntrance(client, Float:fPos[3] =  { 0.0, 0.0, 0.0 } )
 
 	SetEntityMoveType(ent, MOVETYPE_NONE);
 	AcceptEntityInput(ent, "disablemotion");
-	SetEntProp(ent, Prop_Data, "m_CollisionGroup", 2);
+	//SetEntProp(ent, Prop_Data, "m_CollisionGroup", 2);
+	SetEntProp(ent, Prop_Send, "m_usSolidFlags", 12); //FSOLID_NOT_SOLID|FSOLID_TRIGGER
+	SetEntProp(ent, Prop_Data, "m_nSolidType", 6); // SOLID_VPHYSICS
+	SetEntProp(ent, Prop_Send, "m_CollisionGroup", 1); //COLLISION_GROUP_DEBRIS
 
 	g_iTeleporters[ent] = 1;
 	g_iCurrentTele[client] = ent;
@@ -1549,7 +1536,10 @@ CreateTeleportExit(client, Float:fPos[3] =  { 0.0, 0.0, 0.0 } )
 
 	SetEntityMoveType(ent, MOVETYPE_NONE);
 	AcceptEntityInput(ent, "disablemotion");
-	SetEntProp(ent, Prop_Data, "m_CollisionGroup", 2);
+	//SetEntProp(ent, Prop_Data, "m_CollisionGroup", 2);
+	SetEntProp(ent, Prop_Send, "m_usSolidFlags", 12); //FSOLID_NOT_SOLID|FSOLID_TRIGGER
+	SetEntProp(ent, Prop_Data, "m_nSolidType", 6); // SOLID_VPHYSICS
+	SetEntProp(ent, Prop_Send, "m_CollisionGroup", 1); //COLLISION_GROUP_DEBRIS
 
 	g_iTeleporters[ent] = 1;
 
@@ -1619,14 +1609,49 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 	return Plugin_Continue;
 }
 
+public Action:Teleport_Action(Handle:timer, any:pack) {
+
+
+	ResetPack(pack);
+	new client = ReadPackCell(pack);
+	new block = ReadPackCell(pack);
+	CloseHandle(pack);
+
+	new String:sound[512], Float:Vec[3], Float:exitPos[3];
+	GetConVarString(g_hTeleSound, sound, sizeof(sound));
+
+	GetEntPropVector(g_iTeleporters[block], Prop_Data, "m_vecOrigin", exitPos);
+	GetEntPropVector(client, Prop_Data, "m_vecVelocity", Vec);
+
+	Vec[2] = FloatAbs(Vec[2])*1.0;
+
+	TeleportEntity(client, exitPos, NULL_VECTOR, NULL_VECTOR);
+	TeleportEntity(client, exitPos, NULL_VECTOR, Vec);
+
+	EmitSoundToClient(client, TELE_SOUND_PATH);
+
+	return Plugin_Stop;
+}
+
 public Action:OnStartTouch(block, client)
 {
-	if (g_iTeleporters[block] != -1) {
+	/*if (g_iTeleporters[block] != -1) {
 		return Plugin_Continue;
-	}
+	}*/
 
 	if (client > MAXPLAYERS || !IsClientInGame(client)) {
 		return Plugin_Continue;
+	}
+
+	if (g_iTeleporters[block] > 1 && 2 <= GetClientTeam(client) <= 3)
+	{
+		DataPack pack = CreateDataPack();
+		pack.WriteCell(client);
+		pack.WriteCell(block);
+
+		CreateTimer(0.0, Teleport_Action, pack);
+
+		return Plugin_Handled;
 	}
 
 	/* The block can be activated from top only
@@ -2099,14 +2124,14 @@ public Action:OnTouch(block, client)
 	}
 
 	switch(g_iBlocks[block]) {
-		case TRAMPOLINE: {
+		/*case TRAMPOLINE: {
 			DataPack pack = CreateDataPack();
 			pack.WriteCell(client);
 			pack.WriteCell(block);
 
 			CreateTimer(0.0, Trampoline_Action, pack);
 			g_bNoFallDmg[client] = true;
-		}
+		}*/
 	}
 	Block_Touching[client] = g_iBlocks[block]
 
@@ -2616,6 +2641,7 @@ public Action:BoostPlayer(Handle:timer, any:pack)
 	ScaleVector(fVelocity, g_fPropertyValue[block][1]);
 	fVelocity[2] = g_fPropertyValue[block][0];
 	TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, fVelocity);
+
 	return Plugin_Stop;
 }
 
