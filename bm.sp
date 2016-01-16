@@ -88,7 +88,7 @@ new const String:g_sPropertyName[_:BlockTypes][MAXPROPERTIES][64] =
 	{"Time", "Cooldown", ""},
 	{"Kills with godmode", "", ""},
 	{"", "", ""},
-	{"", "", ""},
+	{"Trigger delay", "Cooldown", ""},
 	{"", "", ""},
 	{"Time", "Cooldown", "Speed"},
 	{"", "", ""},
@@ -117,7 +117,7 @@ new const Float:g_fPropertyDefault[_:BlockTypes][MAXPROPERTIES] = {
 	{0.0, 0.0, 0.0},
 	{0.0, 0.0, 0.0},
 	{0.0, 0.0, 0.0},
-	{0.0, 0.0, 0.0},
+	{0.0, 1.0, 0.0},
 	{0.0, 0.0, 0.0},
 	{0.0, 0.0, 0.0},
 	{0.0, 0.0, 0.0},
@@ -1585,9 +1585,6 @@ CreateBlock(client, blocktype = 0, blocksize = _:BLOCK_NORMAL, Float:fPos[3] =  
 		Block_Transparency[block_entity] = transparency;
 	}
 
-	if (blocktype == _:BARRIER_T || blocktype == _:BARRIER_CT)
-		SetEntProp(block_entity, Prop_Data, "m_CollisionGroup", 2);
-
 	g_iBlocks[block_entity] = blocktype;
 
 	SDKHook(block_entity, SDKHook_StartTouch, OnStartTouch);
@@ -1667,6 +1664,9 @@ public Action:OnStartTouch(block, client)
 
 	g_bTouchStartTriggered[client] = true;
 
+	if(g_bTriggered[block]) //kinda experimental
+		return Plugin_Continue;
+
 	DataPack pack = CreateDataPack();
 	pack.WriteCell(client);
 	pack.WriteCell(block);
@@ -1680,7 +1680,7 @@ public Action:OnStartTouch(block, client)
 			CreateTimer(0.0, BoostPlayer, pack);
 		}
 		case DEATH: {
-			if (IsClientInGame(client) && IsPlayerAlive(client))
+			if (IsPlayerAlive(client))
 			{
 				if (!g_bInv[client]) {
 					SDKHooks_TakeDamage(client, 0, 0, 10000.0);
@@ -1702,16 +1702,25 @@ public Action:OnStartTouch(block, client)
 		}
 		case BUNNYHOP: {
 			g_bTriggered[block] = true;
-			CreateTimer(g_fPropertyValue[block][0], StartNoBlock, block);
+			CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
 		}
 		case BUNNYHOP_DELAYED: {
 			g_bTriggered[block] = true;
-			CreateTimer(g_fPropertyValue[block][0], StartNoBlock, block);
+			CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
 		}
 		case BUNNYHOP_NSD: {
 			g_bTriggered[block] = true;
-			CreateTimer(g_fPropertyValue[block][0], StartNoBlock, block);
+			CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
 			SetEntPropFloat(client, Prop_Send, "m_flStamina", 0.0);
+		}
+		case BARRIER_CT: {
+			if(GetClientTeam(client) == 2) {
+				g_bTriggered[block] = true;
+				if(g_fPropertyValue[block][0] < 0.05)
+					StartNoBlock(block);
+				else
+					CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
+			}
 		}
 		default: {
 			CloseHandle(pack);
@@ -2124,21 +2133,16 @@ public Action:OnTouch(block, client)
 	}
 
 	switch(g_iBlocks[block]) {
-		/*case TRAMPOLINE: {
-			DataPack pack = CreateDataPack();
-			pack.WriteCell(client);
-			pack.WriteCell(block);
-
-			CreateTimer(0.0, Trampoline_Action, pack);
-			g_bNoFallDmg[client] = true;
-		}*/
+		case HONEY: {
+			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 0.4);
+		}
 	}
 	Block_Touching[client] = g_iBlocks[block]
 
 		if (g_iBlocks[block] == 1 || g_iBlocks[block] == 31 || g_iBlocks[block] == 89 || g_iBlocks[block] == 60)
 		{
 			if (!g_bTriggered[block])
-				CreateTimer(g_eBlocks[1][EffectTime], StartNoBlock, block);
+				CreateTimer(g_eBlocks[1][EffectTime], Timer_StartNoBlock, block);
 		} else if (g_iBlocks[block] == 2 || g_iBlocks[block] == 32 || g_iBlocks[block] == 61 || g_iBlocks[block] == 90)
 		{
 		} else if (g_iBlocks[block] == 3 || g_iBlocks[block] == 33 || g_iBlocks[block] == 62 || g_iBlocks[block] == 91)
@@ -2183,7 +2187,7 @@ public Action:OnTouch(block, client)
 		} else if (g_iBlocks[block] == 18 || g_iBlocks[block] == 47 || g_iBlocks[block] == 76 || g_iBlocks[block] == 105)
 		{
 			if (!g_bTriggered[block])
-				CreateTimer(g_eBlocks[18][EffectTime], StartNoBlock, block);
+				CreateTimer(g_eBlocks[18][EffectTime], Timer_StartNoBlock, block);
 			SetEntPropFloat(client, Prop_Send, "m_flStamina", 0.0);
 		}
 		else if (g_iBlocks[block] == 19 || g_iBlocks[block] == 48 || g_iBlocks[block] == 77 || g_iBlocks[block] == 106)
@@ -2276,62 +2280,12 @@ public Action:OnEndTouch(block, client)
 	decl Float:player_loc[3]
 	GetClientAbsOrigin(client, player_loc)
 
-	player_loc[2] += TrueForce;
-	if (!(player_loc[2] <= block_loc[2]))
-	{
-
-		if (g_iBlocks[block] == 1 || g_iBlocks[block] == 31 || g_iBlocks[block] == 89 || g_iBlocks[block] == 60)
-		{
-		} else if (g_iBlocks[block] == 2 || g_iBlocks[block] == 32 || g_iBlocks[block] == 61 || g_iBlocks[block] == 90)
-		{
-		} else if (g_iBlocks[block] == 3 || g_iBlocks[block] == 33 || g_iBlocks[block] == 62 || g_iBlocks[block] == 91)
-		{
-		} else if (g_iBlocks[block] == 4 || g_iBlocks[block] == 34 || g_iBlocks[block] == 63 || g_iBlocks[block] == 92)
-		{
-		} else if (g_iBlocks[block] == 5 || g_iBlocks[block] == 35 || g_iBlocks[block] == 64 || g_iBlocks[block] == 93)
-		{
-			g_bNoFallDmg[client] = false;
-		} else if (g_iBlocks[block] == 6 || g_iBlocks[block] == 36 || g_iBlocks[block] == 65 || g_iBlocks[block] == 94)
-		{
-		} else if (g_iBlocks[block] == 7 || g_iBlocks[block] == 37 || g_iBlocks[block] == 66 || g_iBlocks[block] == 95)
-		{
-		} else if (g_iBlocks[block] == 8 || g_iBlocks[block] == 38 || g_iBlocks[block] == 67 || g_iBlocks[block] == 96)
-		{
-		} else if (g_iBlocks[block] == 9 || g_iBlocks[block] == 29 || g_iBlocks[block] == 58 || g_iBlocks[block] == 87)
-		{
-		} else if (g_iBlocks[block] == 10 || g_iBlocks[block] == 39 || g_iBlocks[block] == 68 || g_iBlocks[block] == 97)
-		{
-		} else if (g_iBlocks[block] == 11 || g_iBlocks[block] == 40 || g_iBlocks[block] == 69 || g_iBlocks[block] == 98)
-		{
-			g_iGravity[client] = 2;
-		} else if (g_iBlocks[block] == 12 || g_iBlocks[block] == 41 || g_iBlocks[block] == 70 || g_iBlocks[block] == 99)
-		{
-			CreateTimer(0.2, ResetFire, client)
-
-		} else if (g_iBlocks[block] == 13 || g_iBlocks[block] == 42 || g_iBlocks[block] == 71 || g_iBlocks[block] == 100)
-		{
-		} else if (g_iBlocks[block] == 14 || g_iBlocks[block] == 43 || g_iBlocks[block] == 72 || g_iBlocks[block] == 101)
-		{
-		} else if (g_iBlocks[block] == 15 || g_iBlocks[block] == 44 || g_iBlocks[block] == 73 || g_iBlocks[block] == 102)
-		{
-		} else if (g_iBlocks[block] == 16 || g_iBlocks[block] == 45 || g_iBlocks[block] == 74 || g_iBlocks[block] == 103)
-		{
-		} else if (g_iBlocks[block] == 18 || g_iBlocks[block] == 47 || g_iBlocks[block] == 76 || g_iBlocks[block] == 105)
-		{
-		} else if (g_iBlocks[block] == 19 || g_iBlocks[block] == 48 || g_iBlocks[block] == 77 || g_iBlocks[block] == 106)
-		{
-			g_bNoFallDmg[client] = false;
+	switch(g_iBlocks[block]) {
+		case HONEY: {
+			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.0);
 		}
-		else if (g_iBlocks[block] == 20 || g_iBlocks[block] == 49 || g_iBlocks[block] == 78 || g_iBlocks[block] == 107)
-		{
-			CreateTimer(0.2, ResetHoney, client)
-		}
-
-		//		if(bRandom)
-		//		{
-		//			g_iBlocks[block]=24;
-		//		}
 	}
+
 	CreateTimer(0.01, BlockTouch_End, client);
 
 	return Plugin_Continue;
@@ -2428,26 +2382,30 @@ public Action:ResetCamCanUse(Handle:timer, any:packet)
 	return Plugin_Stop;
 }
 
-public Action:StartNoBlock(Handle:timer, any:block)
+public Action:Timer_StartNoBlock(Handle:timer, any:block)
 {
+	StartNoBlock(block);
+
+	return Plugin_Stop;
+}
+
+public StartNoBlock(block) {
 	SetEntProp(block, Prop_Data, "m_CollisionGroup", 2);
 	SetEntityRenderMode(block, RENDER_TRANSADD);
+
 	if (Block_Transparency[block] > 0)
-	{
 		SetEntityRenderColor(block, 177, 177, 177, RoundFloat(float(Block_Transparency[block]) * 0.4588));
-	}
 	else
-	{
 		SetEntityRenderColor(block, 177, 177, 177, 177);
-	}
+
 	CreateTimer(g_fPropertyValue[block][1], CancelNoBlock, block);
-	return Plugin_Stop;
 }
 
 public Action:CancelNoBlock(Handle:timer, any:block)
 {
 	SetEntProp(block, Prop_Data, "m_CollisionGroup", 0);
 	SetEntityRenderMode(block, RENDER_TRANSCOLOR);
+
 	if (Block_Transparency[block] > 0)
 	{
 		SetEntityRenderColor(block, 255, 255, 255, Block_Transparency[block]);
@@ -2456,7 +2414,9 @@ public Action:CancelNoBlock(Handle:timer, any:block)
 	{
 		SetEntityRenderColor(block, 255, 255, 255, 255);
 	}
+
 	g_bTriggered[block] = false;
+
 	return Plugin_Stop;
 }
 
