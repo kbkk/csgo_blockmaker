@@ -1729,12 +1729,6 @@ public Action:OnStartTouch(block, client)
 		}
 	}
 
-	decl Float:block_loc[3]
-	GetEntPropVector(block, Prop_Send, "m_vecOrigin", block_loc);
-	decl Float:player_loc[3]
-	GetClientAbsOrigin(client, player_loc)
-	player_loc[2] += TrueForce;
-
 	if (false && FL_ONGROUND && GetEntPropEnt(client, Prop_Send, "m_hGroundEntity") == block)
 	{
 		if (g_iBlocks[block] == 7 || g_iBlocks[block] == 37 || g_iBlocks[block] == 66 || g_iBlocks[block] == 95)
@@ -1790,20 +1784,6 @@ public Action:OnStartTouch(block, client)
 			CreateTimer(3.0, ResetGrav, client)
 			g_iGravity[client] = 1;
 		}
-		//	else if(g_iBlocks[block]==14 || g_iBlocks[block]==43 || g_iBlocks[block]==72 || g_iBlocks[block]==101)
-		//	{
-		//		if(GetClientTeam(client) == 2)
-		//		{
-		//			SetEntProp(block_entity, Prop_Data, "m_CollisionGroup", 2);
-		//		}
-		//	}
-		//	else if(g_iBlocks[block]==15 || g_iBlocks[block]==44 || g_iBlocks[block]==73 || g_iBlocks[block]==102)
-		//	{
-		//		if(GetClientTeam(client) == 3)
-		//		{
-		//			SetEntProp(block_entity, Prop_Data, "m_CollisionGroup", 2);
-		//		}
-		//	}
 		else if (g_iBlocks[block] == 16 || g_iBlocks[block] == 45 || g_iBlocks[block] == 74 || g_iBlocks[block] == 103)
 		{
 			if (g_bBootsCanUse[client])
@@ -1982,6 +1962,15 @@ public Action:OnTouch(block, client)
 		}
 		case ICE: {
 			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.15);
+		}
+		case TRAMPOLINE: {
+			DataPack pack = CreateDataPack();
+			pack.WriteCell(client);
+			pack.WriteCell(block);
+
+			RequestFrame(Trampoline_Action, pack);
+
+			g_bNoFallDmg[client] = true;
 		}
 	}
 	Block_Touching[client] = g_iBlocks[block]
@@ -2634,7 +2623,7 @@ public Handler_Blocks(Handle:menu, MenuAction:action, client, param2)
 	if(action == MenuAction_End)
 		CloseHandle(menu);
 
-		
+
 	if (action == MenuAction_Select)
 	{
 		g_iBlockSelection[client] = param2;
