@@ -1145,10 +1145,11 @@ public Action:Command_BlockBuilder(client, args)
 
 public Handler_BlockBuilder(Handle:menu, MenuAction:action, client, param2)
 {
+	if(action == MenuAction_End)
+		CloseHandle(menu);
+
 	if (action != MenuAction_Select)
-	{
 		return;
-	}
 
 	new bool:bDisplayMenu = true;
 
@@ -1408,6 +1409,7 @@ public Handle:CreateMainMenu(client)
 	new String:sInfo[256], String:sSize[32];
 	Format(sInfo, sizeof(sInfo), "Block: %s", g_eBlocks[g_iBlockSelection[client]][BlockName]);
 	AddMenuItem(menu, "0", sInfo);
+
 	if (g_iDragEnt[client] == 0)
 		AddMenuItem(menu, "1", "Place Block");
 	else
@@ -2629,6 +2631,10 @@ public Handler_Teleport(Handle:menu, MenuAction:action, client, param2)
 
 public Handler_Blocks(Handle:menu, MenuAction:action, client, param2)
 {
+	if(action == MenuAction_End)
+		CloseHandle(menu);
+
+		
 	if (action == MenuAction_Select)
 	{
 		g_iBlockSelection[client] = param2;
