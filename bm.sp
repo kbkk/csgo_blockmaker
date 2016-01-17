@@ -108,17 +108,18 @@ new const String:g_sPropertyName[_:BlockTypes][MAXPROPERTIES][64] =
 new const Float:g_fPropertyDefault[_:BlockTypes][MAXPROPERTIES] = {
 	{0.0, 0.0, 0.0},
 	{0.1, 1.0, 0.0},
-	{5.0, 2.0, 0.0},
+	{1.0, 0.5, 0.0},
 	{1.0, 0.5, 0.0},
 	{0.0, 0.0, 0.0},
 	{300.0, 0.0, 0.0},
 	{300.0, 300.0, 0.0},
-	{0.0, 0.0, 0.0},
-	{0.0, 0.0, 0.0},
+	{10.0, 60.0, 0.0},
+	{10.0, 60.0, 0.0},
 	{0.0, 0.0, 0.0},
 	{0.0, 0.0, 0.0},
 	{0.0, 1.0, 0.0},
 	{0.0, 0.0, 0.0},
+	{10.0, 60.0, 320.0},
 	{0.0, 0.0, 0.0},
 	{0.0, 0.0, 0.0},
 	{0.0, 0.0, 0.0},
@@ -130,8 +131,7 @@ new const Float:g_fPropertyDefault[_:BlockTypes][MAXPROPERTIES] = {
 	{0.0, 0.0, 0.0},
 	{0.0, 0.0, 0.0},
 	{0.0, 0.0, 0.0},
-	{0.0, 0.0, 0.0},
-	{3.0, 1.0, 0.0}
+	{1.0, 1.0, 0.0}
 }
 
 new const g_bTopOnlyDefault[_:BlockTypes] =
@@ -270,6 +270,8 @@ new RoundIndex = 0; // Quite lazy way yet effective one
 #include "bm/bm_propmenu"
 #include "bm/bm_readonlyproppanel"
 
+#include "bm/bm_cpmenu"
+
 public Plugin:myinfo =
 {
 	name = "Blockmaker",
@@ -298,6 +300,7 @@ public OnPluginStart()
 	//	RegConsoleCmd("sm_bb", Command_BlockBuilder);
 	RegAdminCmd("sm_bb", Command_BlockBuilder, ADMFLAG_CUSTOM1);
 	RegAdminCmd("sm_prop", Command_BlockProperty, ADMFLAG_CUSTOM1);
+	RegAdminCmd("sm_cp", Command_CheckpointMenu, ADMFLAG_CUSTOM1);
 	//	RegConsoleCmd("sm_bsave", Command_SaveBlocks);
 	RegAdminCmd("sm_bsave", Command_SaveBlocks, ADMFLAG_CUSTOM2);
 	RegAdminCmd("sm_blocksnap", Command_BlockSnap, ADMFLAG_CUSTOM1);
@@ -357,6 +360,11 @@ public Action:Command_BlockProperty(client, args)
 
 	g_iClCurrentBlock[client] = ent;
 	ShowPropertyMenu(client);
+}
+
+public Action:Command_CheckpointMenu(client, args)
+{
+	ShowCheckpointMenu(client);
 }
 
 public Action:OnSayCmd(client, const String:command[], argc)
@@ -1304,16 +1312,8 @@ public Handler_BlockBuilder(Handle:menu, MenuAction:action, client, param2)
 			}
 		}
 		case 10: {
-			new ent = GetClientAimTarget(client, false);
-			if (IsValidBlock(ent))
-			{
-				bDisplayMenu = false;
-				//show property menu
-			}
-			else
-			{
-				PrintToChat(client, "\x03%s\x04 You have to aim at the block to change it's properties.", CHAT_TAG);
-			}
+			ShowCheckpointMenu(client);
+			bDisplayMenu = false;
 		}
 		case 11: {
 			bDisplayMenu = false;
@@ -1434,7 +1434,7 @@ public Handle:CreateMainMenu(client)
 
 	AddMenuItem(menu, "8", "Teleport Builder");
 	AddMenuItem(menu, "9", "Block Transparency");
-	AddMenuItem(menu, "10", "Block Properties");
+	AddMenuItem(menu, "10", "Checkpoint Menu");
 	AddMenuItem(menu, "11", "More Options");
 	SetMenuExitButton(menu, true);
 	g_hClientMenu[client] = menu;
@@ -1673,7 +1673,7 @@ public Action:OnStartTouch(block, client)
 
 	switch(g_iBlocks[block]) {
 		case TRAMPOLINE: {
-			CreateTimer(0.0, Trampoline_Action, pack)
+			RequestFrame(Trampoline_Action, pack);
 			g_bNoFallDmg[client] = true;
 		}
 		case SPEEDBOOST: {
@@ -1735,165 +1735,7 @@ public Action:OnStartTouch(block, client)
 
 	if (false && FL_ONGROUND && GetEntPropEnt(client, Prop_Send, "m_hGroundEntity") == block)
 	{
-		//	new bool:bRandom = false;
-		if (g_iBlocks[block] == 24 || g_iBlocks[block] == 53 || g_iBlocks[block] == 82 || g_iBlocks[block] == 111)
-		{
-			if (!g_bRandomCantUse[client])
-			{
-				g_bRandomCantUse[client] = true;
-				new Handle:datapack = CreateDataPack()
-				WritePackCell(datapack, client)
-				WritePackCell(datapack, RoundIndex)
-				if (randomblock_time >= 1.0)
-				{
-					CreateTimer(randomblock_time, ResetCooldownRandom, datapack)
-				}
-				else
-				{
-					CreateTimer(1.0, ResetCooldownRandom, datapack)
-				}
-				new random = RoundFloat(GetRandomFloat(1.00, 8.00))
-				if (random == 1) // Invincibility, Stealth, Camouflage, Boots Of Speed, a slap, or death!
-				{
-					new Handle:packet_f = CreateDataPack()
-					WritePackCell(packet_f, RoundIndex)
-					WritePackCell(packet_f, client)
-					CreateTimer(g_eBlocks[7][EffectTime], ResetInv, packet_f);
-					CreateTimer(g_eBlocks[7][CooldownTime], ResetInvCooldown, packet_f);
-					g_bInv[client] = true;
-					g_bInvCanUse[client] = false;
-
-					//	CreateLight(client)
-
-					new Handle:packet = CreateDataPack()
-					WritePackCell(packet, RoundIndex)
-					WritePackCell(packet, client)
-					WritePackCell(packet, RoundFloat(g_eBlocks[7][EffectTime]))
-					WritePackString(packet, "Invincibility")
-
-					EmitSoundToClient(client, INVI_SOUND_PATH, block)
-					CreateTimer(1.0, TimeLeft, packet)
-					PrintToChat(client, "\x03%s\x04 You've rolled an Invincibility from Random Block!", CHAT_TAG);
-				}
-				else if (random == 2)
-				{
-					new Handle:packet_f = CreateDataPack()
-					WritePackCell(packet_f, RoundIndex)
-					WritePackCell(packet_f, client)
-
-					CreateTimer(g_eBlocks[8][EffectTime], ResetStealth, packet_f);
-					CreateTimer(g_eBlocks[8][CooldownTime], ResetStealthCooldown, packet_f);
-					SetEntityRenderMode(client, RENDER_NONE);
-					SDKHook(client, SDKHook_SetTransmit, Stealth_SetTransmit)
-					g_bStealthCanUse[client] = false;
-
-					new Handle:packet = CreateDataPack()
-					WritePackCell(packet, RoundIndex)
-					WritePackCell(packet, client)
-					WritePackCell(packet, RoundFloat(g_eBlocks[8][EffectTime]))
-					WritePackString(packet, "Stealth")
-					EmitSoundToClient(client, STEALTH_SOUND_PATH, block)
-					CreateTimer(1.0, TimeLeft, packet)
-					PrintToChat(client, "\x03%s\x04 You've rolled a Stealth from Random Block!", CHAT_TAG);
-				}
-				else if (random == 3)
-				{
-					if (GetClientTeam(client) == 2)
-						SetEntityModel(client, "models/player/ctm_gign.mdl");
-					else if (GetClientTeam(client) == 3)
-						SetEntityModel(client, "models/player/tm_phoenix.mdl");
-					g_bCamCanUse[client] = false;
-					new Handle:packet_f = CreateDataPack()
-					WritePackCell(packet_f, RoundIndex)
-					WritePackCell(packet_f, client)
-					CreateTimer(g_eBlocks[21][EffectTime], ResetCamouflage, packet_f);
-					CreateTimer(g_eBlocks[21][CooldownTime], ResetCamCanUse, packet_f);
-
-					new Handle:packet = CreateDataPack()
-					WritePackCell(packet, RoundIndex)
-					WritePackCell(packet, client)
-					WritePackCell(packet, RoundFloat(g_eBlocks[21][EffectTime]))
-					WritePackString(packet, "Camouflage")
-					EmitSoundToClient(client, CAM_SOUND_PATH, block)
-					CreateTimer(1.0, TimeLeft, packet)
-					PrintToChat(client, "\x03%s\x04 You've rolled a Camouflage from Random Block!", CHAT_TAG);
-				}
-				else if (random == 4)
-				{
-					new Handle:packet_f = CreateDataPack()
-					WritePackCell(packet_f, RoundIndex)
-					WritePackCell(packet_f, client)
-					CreateTimer(g_eBlocks[16][EffectTime], ResetBoots, packet_f);
-					CreateTimer(g_eBlocks[16][CooldownTime], ResetBootsCooldown, packet_f);
-					SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.45);
-					g_bBootsCanUse[client] = false;
-
-					new Handle:packet = CreateDataPack()
-					WritePackCell(packet, RoundIndex)
-					WritePackCell(packet, client)
-					WritePackCell(packet, RoundFloat(g_eBlocks[16][EffectTime]))
-					WritePackString(packet, "Speed Boost")
-
-					EmitSoundToClient(client, BOS_SOUND_PATH, block)
-
-					CreateTimer(1.0, TimeLeft, packet)
-					PrintToChat(client, "\x03%s\x04 You've rolled a Speed Boost from Random Block!", CHAT_TAG);
-				}
-				else if (random == 5)
-				{
-					if (!g_bInv[client] && GetEntProp(client, Prop_Data, "m_takedamage", 1) != 0)
-					{
-						SDKHooks_TakeDamage(client, 0, 0, 10000.0);
-						PrintToChat(client, "\x03%s\x04 You've rolled a Death from Random Block!", CHAT_TAG);
-					}
-					else
-					{
-						PrintToChat(client, "\x03%s\x04 Huh? It looks like you've avoided death from Random Block!", CHAT_TAG);
-					}
-				}
-				else if (random == 6)
-				{
-					new ent = -1;
-					ent = Client_GiveWeaponAndAmmo(client, "weapon_deagle", true, 0, 1, 1, 1);
-					SetEntProp(ent, Prop_Data, "m_iClip1", 1);
-					SetEntProp(ent, Prop_Data, "m_iClip2", 1);
-					SetEntData(client, g_iAmmo + (GetEntData(ent, g_iPrimaryAmmoType) << 2), 0, 4, true);
-					PrintToChatAll("\x03%s\x04 %N just got a Deagle", CHAT_TAG, client);
-				}
-				else if (random == 7)
-				{
-					new ent = -1;
-					ent = Client_GiveWeaponAndAmmo(client, "weapon_awp", true, 0, 1, 1, 1);
-					SetEntProp(ent, Prop_Data, "m_iClip1", 1);
-					SetEntProp(ent, Prop_Data, "m_iClip2", 1);
-					SetEntData(client, g_iAmmo + (GetEntData(ent, g_iPrimaryAmmoType) << 2), 0, 4, true);
-					PrintToChatAll("\x03%s\x04 %N just got a AWP", CHAT_TAG, client);
-				}
-				else if (random == 8)
-				{
-					new grenade_random = RoundFloat(GetRandomFloat(1.00, 3.00))
-					if (grenade_random == 1)
-					{
-						GivePlayerItem(client, "weapon_hegrenade");
-					}
-					else if (grenade_random == 2)
-					{
-						GivePlayerItem(client, "weapon_flashbang");
-					}
-					else if (grenade_random == 3)
-					{
-						// GivePlayerItem(client, "weapon_smokegrenade");
-						GivePlayerItem(client, "weapon_decoy");
-					}
-					PrintToChat(client, "\x03%s\x04 You've rolled a Grenade from Random Block!", CHAT_TAG);
-				}
-			}
-		}
-
-		else if (g_iBlocks[block] == 4 || g_iBlocks[block] == 34 || g_iBlocks[block] == 63 || g_iBlocks[block] == 92)
-		{
-		}
-		else if (g_iBlocks[block] == 7 || g_iBlocks[block] == 37 || g_iBlocks[block] == 66 || g_iBlocks[block] == 95)
+		if (g_iBlocks[block] == 7 || g_iBlocks[block] == 37 || g_iBlocks[block] == 66 || g_iBlocks[block] == 95)
 		{
 			if (g_bInvCanUse[client])
 			{
@@ -2136,10 +1978,13 @@ public Action:OnTouch(block, client)
 		case HONEY: {
 			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 0.4);
 		}
+		case ICE: {
+			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.15);
+		}
 	}
 	Block_Touching[client] = g_iBlocks[block]
 
-		if (g_iBlocks[block] == 1 || g_iBlocks[block] == 31 || g_iBlocks[block] == 89 || g_iBlocks[block] == 60)
+		/*if (g_iBlocks[block] == 1 || g_iBlocks[block] == 31 || g_iBlocks[block] == 89 || g_iBlocks[block] == 60)
 		{
 			if (!g_bTriggered[block])
 				CreateTimer(g_eBlocks[1][EffectTime], Timer_StartNoBlock, block);
@@ -2240,9 +2085,9 @@ public Action:OnTouch(block, client)
 					}
 				}
 			}
-		}
+		}*/
 
-		return Plugin_Continue;
+	return Plugin_Continue;
 }
 
 // Thanks for those three stocks to TnTSCS (https://forums.alliedmods.net/showpost.php?p=2242491&postcount=12)
@@ -2282,6 +2127,9 @@ public Action:OnEndTouch(block, client)
 
 	switch(g_iBlocks[block]) {
 		case HONEY: {
+			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.0);
+		}
+		case ICE: {
 			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.0);
 		}
 	}
@@ -2605,11 +2453,11 @@ public Action:BoostPlayer(Handle:timer, any:pack)
 	return Plugin_Stop;
 }
 
-public Action:Trampoline_Action(Handle:timer, any:pack)
+public Trampoline_Action(any:pack)
 {
-	ResetPack(pack)
-	new client = ReadPackCell(pack)
-	new block = ReadPackCell(pack)
+	ResetPack(pack);
+	new client = ReadPackCell(pack);
+	new block = ReadPackCell(pack);
 	CloseHandle(pack);
 	//new Float:fAngles[3];
 	//GetClientEyeAngles(client, fAngles);
@@ -2619,13 +2467,13 @@ public Action:Trampoline_Action(Handle:timer, any:pack)
 
 	GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVelocity);
 
-	fVelocity[0] *= 1.15;
-	fVelocity[1] *= 1.15;
+	//fVelocity[0] *= 1.15;
+	//fVelocity[1] *= 1.15;
 	fVelocity[2] = g_fPropertyValue[block][0];
 
 	TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, fVelocity);
 
-	return Plugin_Stop;
+	//return Plugin_Stop;
 }
 
 public Action:SlapPlayerBlock(Handle:timer, any:client)
