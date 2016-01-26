@@ -46,12 +46,12 @@ enum BlockTypes {
 new const String:BlockNames[_:BlockTypes][] = {
 	"Platform",
 	"Bunnyhop",
-	"DAMAGE",
-	"HEALTH",
+	"Damage",
+	"Health",
 	"ICE",
-	"TRAMPOLINE",
-	"SPEEDBOOST",
-	"INVINCIBLITY",
+	"Trampoline",
+	"Speedboost",
+	"Invincibility",
 	"Stealth",
 	"Death",
 	"GRAVITY",
@@ -61,14 +61,14 @@ new const String:BlockNames[_:BlockTypes][] = {
 	"GLASS",
 	"Bunnyhop No Slow Down",
 	"Money",
-	"HONEY",
+	"Honey",
 	"CAMOUFLAGE",
 	"DEAGLE",
 	"AWP",
 	"RANDOM",
 	"HE",
 	"FLASH",
-	"FROST",
+	"Frost",
 	"Delayed Bunnyhop"
 }
 
@@ -240,7 +240,6 @@ new g_iBlocks[2048] =  { -1, ... };
 new g_iBlocksSize[2048] =  { -1, ... };
 new g_iTeleporters[2048] =  { -1, ... };
 // new g_iClientBlocks[MAXPLAYERS+1] = {-1, ...};
-new g_iGravity[MAXPLAYERS + 1] =  { 0, ... };
 new g_iAmmo;
 new g_iPrimaryAmmoType;
 new g_iCurrentTele[MAXPLAYERS + 1] =  { -1, ... };
@@ -251,8 +250,6 @@ new Block_Transparency[2048] = 0
 new Float:g_fGrabOffset[MAXPLAYERS + 1];
 
 new bool:g_bNoFallDmg[MAXPLAYERS + 1] =  { false, ... };
-new bool:g_bInvCanUse[MAXPLAYERS + 1] =  { true, ... };
-new bool:g_bInv[MAXPLAYERS + 1] =  { false, ... };
 new bool:g_bStealthCanUse[MAXPLAYERS + 1] =  { true, ... };
 new bool:g_bBootsCanUse[MAXPLAYERS + 1] =  { true, ... };
 new bool:g_bLocked[MAXPLAYERS + 1] =  { false, ... };
@@ -289,6 +286,9 @@ new RoundIndex = 0; // Quite lazy way yet effective one
 
 #include "bm/bm_cpmenu"
 
+#include "bm/effects/invincibility"
+#include "bm/effects/bootsofspeed"
+
 public Plugin:myinfo =
 {
 	name = "Blockmaker",
@@ -319,6 +319,8 @@ public OnPluginStart()
 	RegAdminCmd("+grab", Command_GrabBlock, ADMFLAG_CUSTOM1);
 	RegAdminCmd("-grab", Command_ReleaseBlock, ADMFLAG_CUSTOM1);
 	RegAdminCmd("tgrab", Command_ToggleGrab, ADMFLAG_CUSTOM1);
+
+	RegAdminCmd("sm_setdeath1", SetAllDeathsKillWithGod, ADMFLAG_CUSTOM2);
 
 	AddCommandListener(OnSayCmd, "say");
 	AddCommandListener(OnSayCmd, "say_team");
@@ -505,11 +507,12 @@ public Action:RoundStart(Handle:event, const String:name[], bool:dontBroadcast)
 		for(int i = 0; i < view_as<int>(e_PlayerEffects); i++)
 			ResetPlayerEffect(client, e_PlayerEffects:i);
 
+		SDKUnhook(client, SDKHook_OnTakeDamage, INVINCIBLITY_OnTakeDamage);
+
 		if (!IsClientInGame(client))
 			continue;
 
 		SetEntityRenderMode(client, RENDER_NORMAL);
-		SDKUnhook(client, SDKHook_SetTransmit, Stealth_SetTransmit)
 	}
 
 	for (new i = 0; i < 2048; ++i)
@@ -524,8 +527,6 @@ public Action:RoundStart(Handle:event, const String:name[], bool:dontBroadcast)
 		g_bFlashbangCanUse[i] = true;
 		g_bSmokegrenadeCanUse[i] = true;
 		g_iCurrentTele[i] = -1;
-		g_bInv[i] = false;
-		g_bInvCanUse[i] = true;
 		g_bStealthCanUse[i] = true;
 		g_bBootsCanUse[i] = true;
 		g_bLocked[i] = false;
@@ -547,8 +548,6 @@ public Action:RoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 
 public OnClientPutInServer(client)
 {
-	g_bInv[client] = false;
-	g_bInvCanUse[client] = true;
 	g_bStealthCanUse[client] = true;
 	g_bBootsCanUse[client] = true;
 	g_bLocked[client] = false;
@@ -565,7 +564,7 @@ public OnClientPutInServer(client)
 	g_fSnappingGap[client] = 0.0
 	for (new i = 0; i < 2048; ++i)
 	g_bGroups[client][i] = false;
-	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
+
 }
 
 public Action DisplayEffectsHud(Handle timer)
@@ -1662,7 +1661,7 @@ CreateBlock(client, blocktype = 0, blocksize = _:BLOCK_NORMAL, Float:fPos[3] =  
 
 public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype)
 {
-	if (g_bInv[victim] || (g_bNoFallDmg[victim] && damagetype & DMG_FALL))
+	if ((g_bNoFallDmg[victim] && damagetype & DMG_FALL))
 		return Plugin_Handled;
 	return Plugin_Continue;
 }
@@ -1740,9 +1739,12 @@ public Action:OnStartTouch(block, client)
 		}
 		case DEATH: {
 			CloseHandle(pack);
+
 			if (IsPlayerAlive(client))
 			{
-				if (!g_bInv[client]) {
+				//has no godmode
+				if (!g_PlayerEffects[client][Invincibility][active]
+					|| g_fPropertyValue[block][0] > 0.5) {
 					SDKHooks_TakeDamage(client, 0, 0, 10000.0);
 				}
 			}
@@ -1798,6 +1800,31 @@ public Action:OnStartTouch(block, client)
 					g_fPropertyValue[block][1], STEALTH_end, STEALTH_cdEnd);
 			}
 		}
+		case INVINCIBLITY: {
+			CloseHandle(pack);
+
+			if(g_PlayerEffects[client][Invincibility][canUse])
+			{
+				SDKHook(client, SDKHook_OnTakeDamage, INVINCIBLITY_OnTakeDamage);
+				SetEntityRenderMode(client, RENDER_GLOW);
+				SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
+				SetEntityRenderColor(client, 230, 230, 40, 255);
+
+				SetPlayerEffect(client, Invincibility, g_fPropertyValue[block][0],
+					g_fPropertyValue[block][1], INVINCIBLITY_end, INVINCIBLITY_cdEnd);
+			}
+		}
+		case BOOTS_OF_SPEED: {
+			CloseHandle(pack);
+
+			if(g_PlayerEffects[client][BootsOfSpeed][canUse])
+			{
+				SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", g_fPropertyValue[block][2] / 250.0);
+
+				SetPlayerEffect(client, BootsOfSpeed, g_fPropertyValue[block][0],
+					g_fPropertyValue[block][1], BOOTS_OF_SPEED_end, BOOTS_OF_SPEED_cdEnd);
+			}
+		}
 		default: {
 			CloseHandle(pack);
 		}
@@ -1805,61 +1832,7 @@ public Action:OnStartTouch(block, client)
 
 	if (false && FL_ONGROUND && GetEntPropEnt(client, Prop_Send, "m_hGroundEntity") == block)
 	{
-		if (g_iBlocks[block] == 7 || g_iBlocks[block] == 37 || g_iBlocks[block] == 66 || g_iBlocks[block] == 95)
-		{
-			if (g_bInvCanUse[client])
-			{
-				new Handle:packet_f = CreateDataPack()
-				WritePackCell(packet_f, RoundIndex)
-				WritePackCell(packet_f, client)
-				CreateTimer(g_eBlocks[7][EffectTime], ResetInv, packet_f);
-				CreateTimer(g_eBlocks[7][CooldownTime], ResetInvCooldown, packet_f);
-				g_bInv[client] = true;
-				g_bInvCanUse[client] = false;
-
-				//	CreateLight(client)
-
-				new Handle:packet = CreateDataPack()
-				WritePackCell(packet, RoundIndex)
-				WritePackCell(packet, client)
-				WritePackCell(packet, RoundFloat(g_eBlocks[7][EffectTime]))
-				WritePackString(packet, "Invincibility")
-
-				EmitSoundToClient(client, INVI_SOUND_PATH, block)
-				CreateTimer(1.0, TimeLeft, packet)
-			}
-		}
-		else if (g_iBlocks[block] == 11 || g_iBlocks[block] == 40 || g_iBlocks[block] == 69 || g_iBlocks[block] == 98)
-		{
-			SetEntityGravity(client, 0.4);
-			CreateTimer(3.0, ResetGrav, client)
-			g_iGravity[client] = 1;
-		}
-		else if (g_iBlocks[block] == 16 || g_iBlocks[block] == 45 || g_iBlocks[block] == 74 || g_iBlocks[block] == 103)
-		{
-			if (g_bBootsCanUse[client])
-			{
-				new Handle:packet_f = CreateDataPack()
-				WritePackCell(packet_f, RoundIndex)
-				WritePackCell(packet_f, client)
-				CreateTimer(g_eBlocks[16][EffectTime], ResetBoots, packet_f);
-				CreateTimer(g_eBlocks[16][CooldownTime], ResetBootsCooldown, packet_f);
-
-				SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.45);
-				g_bBootsCanUse[client] = false;
-
-				new Handle:packet = CreateDataPack()
-				WritePackCell(packet, RoundIndex)
-				WritePackCell(packet, client)
-				WritePackCell(packet, RoundFloat(g_eBlocks[16][EffectTime]))
-				WritePackString(packet, "Speed Boost")
-
-				EmitSoundToClient(client, BOS_SOUND_PATH, block)
-
-				CreateTimer(1.0, TimeLeft, packet)
-			}
-		}
-		else if (g_iBlocks[block] == 21 || g_iBlocks[block] == 50 || g_iBlocks[block] == 79 || g_iBlocks[block] == 108)
+		if (g_iBlocks[block] == 21 || g_iBlocks[block] == 50 || g_iBlocks[block] == 79 || g_iBlocks[block] == 108)
 		{
 			if (g_bCamCanUse[client])
 			{
@@ -2038,109 +2011,6 @@ public Action:OnTouch(block, client)
 	}
 	Block_Touching[client] = g_iBlocks[block]
 
-		/*if (g_iBlocks[block] == 1 || g_iBlocks[block] == 31 || g_iBlocks[block] == 89 || g_iBlocks[block] == 60)
-		{
-			if (!g_bTriggered[block])
-				CreateTimer(g_eBlocks[1][EffectTime], Timer_StartNoBlock, block);
-		} else if (g_iBlocks[block] == 2 || g_iBlocks[block] == 32 || g_iBlocks[block] == 61 || g_iBlocks[block] == 90)
-		{
-		} else if (g_iBlocks[block] == 3 || g_iBlocks[block] == 33 || g_iBlocks[block] == 62 || g_iBlocks[block] == 91)
-		{
-		} else if (g_iBlocks[block] == 4 || g_iBlocks[block] == 34 || g_iBlocks[block] == 63 || g_iBlocks[block] == 92)
-		{
-		} else if (g_iBlocks[block] == 5 || g_iBlocks[block] == 35 || g_iBlocks[block] == 64 || g_iBlocks[block] == 93)
-		{
-		} else if (g_iBlocks[block] == 6 || g_iBlocks[block] == 36 || g_iBlocks[block] == 65 || g_iBlocks[block] == 94)
-		{
-		} else if (g_iBlocks[block] == 7 || g_iBlocks[block] == 37 || g_iBlocks[block] == 66 || g_iBlocks[block] == 95)
-		{
-		} else if (g_iBlocks[block] == 8 || g_iBlocks[block] == 38 || g_iBlocks[block] == 67 || g_iBlocks[block] == 96)
-		{
-		}
-		else if (g_iBlocks[block] == _:DEATH) // DEATHBLOCK
-		{
-			if (IsPlayerAlive(client))
-			{
-				if (!g_bInv[client] && GetEntProp(client, Prop_Data, "m_takedamage", 1) != 0) {
-					if ((GetEntityFlags(client) & FL_ONGROUND)
-					&& GetEntPropEnt(client, Prop_Send, "m_hGroundEntity") == block) {
-						SDKHooks_TakeDamage(client, 0, 0, 10000.0);
-					}
-				}
-			}
-		}
-		else if (g_iBlocks[block] == 10 || g_iBlocks[block] == 39 || g_iBlocks[block] == 68 || g_iBlocks[block] == 97)
-		{
-		} else if (g_iBlocks[block] == 11 || g_iBlocks[block] == 40 || g_iBlocks[block] == 69 || g_iBlocks[block] == 98)
-		{
-		} else if (g_iBlocks[block] == 12 || g_iBlocks[block] == 41 || g_iBlocks[block] == 70 || g_iBlocks[block] == 99)
-		{
-		} else if (g_iBlocks[block] == 13 || g_iBlocks[block] == 42 || g_iBlocks[block] == 71 || g_iBlocks[block] == 100)
-		{
-		} else if (g_iBlocks[block] == 14 || g_iBlocks[block] == 43 || g_iBlocks[block] == 72 || g_iBlocks[block] == 101)
-		{
-		} else if (g_iBlocks[block] == 15 || g_iBlocks[block] == 44 || g_iBlocks[block] == 73 || g_iBlocks[block] == 102)
-		{
-		} else if (g_iBlocks[block] == 16 || g_iBlocks[block] == 45 || g_iBlocks[block] == 74 || g_iBlocks[block] == 103)
-		{
-		} else if (g_iBlocks[block] == 18 || g_iBlocks[block] == 47 || g_iBlocks[block] == 76 || g_iBlocks[block] == 105)
-		{
-			if (!g_bTriggered[block])
-				CreateTimer(g_eBlocks[18][EffectTime], Timer_StartNoBlock, block);
-			SetEntPropFloat(client, Prop_Send, "m_flStamina", 0.0);
-		}
-		else if (g_iBlocks[block] == 19 || g_iBlocks[block] == 48 || g_iBlocks[block] == 77 || g_iBlocks[block] == 106)
-		{
-			g_bNoFallDmg[client] = true;
-		}
-		else if (g_iBlocks[block] == 20 || g_iBlocks[block] == 49 || g_iBlocks[block] == 78 || g_iBlocks[block] == 107)
-		{
-			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 0.4);
-		}
-		else if (g_iBlocks[block] == 25 || g_iBlocks[block] == 54 || g_iBlocks[block] == 83 || g_iBlocks[block] == 112)
-		{
-			if (g_bHEgrenadeCanUse[client])
-			{
-				if (GetClientTeam(client) == 2)
-				{
-					if (GetClientHEGrenades(client) < 1)
-					{
-						GivePlayerItem(client, "weapon_hegrenade");
-						g_bHEgrenadeCanUse[client] = false;
-					}
-				}
-			}
-		}
-		else if (g_iBlocks[block] == 26 || g_iBlocks[block] == 55 || g_iBlocks[block] == 84 || g_iBlocks[block] == 113)
-		{
-			if (g_bFlashbangCanUse[client])
-			{
-				if (GetClientTeam(client) == 2)
-				{
-					if (GetClientFlashbangs(client) < 1)
-					{
-						GivePlayerItem(client, "weapon_flashbang");
-						g_bFlashbangCanUse[client] = false;
-					}
-				}
-			}
-		}
-		else if (g_iBlocks[block] == 27 || g_iBlocks[block] == 56 || g_iBlocks[block] == 85 || g_iBlocks[block] == 114)
-		{
-			if (g_bSmokegrenadeCanUse[client])
-			{
-				if (GetClientTeam(client) == 2)
-				{
-					if (GetClientSmokeGrenades(client) < 1)
-					{
-						// GivePlayerItem(client, "weapon_smokegrenade");
-						GivePlayerItem(client, "weapon_decoy");
-						g_bSmokegrenadeCanUse[client] = false;
-					}
-				}
-			}
-		}*/
-
 	return Plugin_Continue;
 }
 
@@ -2237,7 +2107,7 @@ public Action:DamagePlayer(Handle:timer, any:pack)
 	Block_Timers[client] =
 		CreateTimer(g_fPropertyValue[block][1], DamagePlayer, pack);
 
-	if (g_bInv[client])
+	if (g_PlayerEffects[client][Invincibility][active])
 		return Plugin_Handled;
 
 	/*if (GetClientHealth(client) - 5 > 0)
@@ -2360,40 +2230,6 @@ public Action:ResetNoFall(Handle:timer, any:client)
 	if (!IsClientInGame(client))
 		return Plugin_Stop;
 	g_bNoFallDmg[client] = false;
-	return Plugin_Stop;
-}
-
-public Action:ResetInv(Handle:timer, any:packet)
-{
-	ResetPack(packet)
-	new index = ReadPackCell(packet)
-	if (index != RoundIndex)
-	{
-		KillTimer(timer, true)
-		return Plugin_Handled;
-	}
-	new client = ReadPackCell(packet)
-	if (!IsClientInGame(client))
-		return Plugin_Stop;
-	g_bInv[client] = false;
-	PrintToChat(client, "\x03%s\x04 Invincibility has worn off.", CHAT_TAG);
-	return Plugin_Stop;
-}
-
-public Action:ResetInvCooldown(Handle:timer, any:packet)
-{
-	ResetPack(packet)
-	new index = ReadPackCell(packet)
-	if (index != RoundIndex)
-	{
-		KillTimer(timer, true)
-		return Plugin_Handled;
-	}
-	new client = ReadPackCell(packet)
-	if (!IsClientInGame(client))
-		return Plugin_Stop;
-	g_bInvCanUse[client] = true;
-	PrintToChat(client, "\x03%s\x04 Invincibility block cooldown has worn off.", CHAT_TAG);
 	return Plugin_Stop;
 }
 
@@ -2933,6 +2769,19 @@ public StopGrabbing(client, ent) {
 	g_iDragEnt[client] = 0;
 }
 
+public Action SetAllDeathsKillWithGod(client, args)
+{
+	for (new i = MaxClients + 1; i < 2048; ++i)
+	{
+		if(IsValidBlock(i) && g_iBlocks[i] == _:DEATH)
+		{
+			g_fPropertyValue[i][0] = 1.0;
+		}
+	}
+
+	PrintToChatAll("%s\x03 first property \x04 of\x03 all death blocks\x04 changed to\x03 1", CHAT_TAG);
+}
+
 public SetDefaultProperty(block) {
 	new blocktype = g_iBlocks[block];
 
@@ -2955,8 +2804,11 @@ public SetPlayerEffect(int client, e_PlayerEffects effect, float lasts,
 	g_PlayerEffects[client][effect][endTime] = gametime + lasts;
 	g_PlayerEffects[client][effect][cooldownEndTime] = gametime + lasts + cooldown;
 
-	CreateTimer(lasts, end, userid, TIMER_FLAG_NO_MAPCHANGE);
-	CreateTimer(lasts + cooldown, cdEnd, userid, TIMER_FLAG_NO_MAPCHANGE);
+	g_PlayerEffects[client][effect][timerEnd] =
+		CreateTimer(lasts, end, userid, TIMER_FLAG_NO_MAPCHANGE);
+
+	g_PlayerEffects[client][effect][timerCdEnd] =
+		CreateTimer(lasts + cooldown, cdEnd, userid, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public ResetPlayerEffect(int client, e_PlayerEffects effect)
