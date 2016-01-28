@@ -1,13 +1,14 @@
 public ShowReadOnlyPropertyPanelAiming(client) {
 	new ent = GetClientAimTarget2(client, false);
 
-	if(!IsValidBlock(ent))
+	if(!IsValidBlock(ent) || g_iTeleporters[ent] != -1)
 		return;
 
 	ShowReadOnlyPropertyPanel(client, ent);
 }
 
 public ShowReadOnlyPropertyPanel(client, block) {
+
 	decl String:buffer[256];
 
 	new blocktype = g_iBlocks[block];
