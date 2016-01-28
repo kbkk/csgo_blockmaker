@@ -9,10 +9,11 @@
 #include <sdktools>
 #include <sdkhooks>
 #include <smlib>
+#include <mm>
 
-#define CHAT_TAG "[BlockBuilder]"
-#define PREFIX "\x03[BlockBuilder]\x04 "
-#define MESS "[BlockBuilder] %s"
+#define CHAT_TAG "[TeamMates]"
+#define PREFIX "\x03[TeamMates]\x04 "
+#define MESS "[TeamMates] %s"
 
 enum BlockTypes {
 	PLATFORM,
@@ -251,7 +252,6 @@ new Float:g_fGrabOffset[MAXPLAYERS + 1];
 
 new bool:g_bNoFallDmg[MAXPLAYERS + 1] =  { false, ... };
 new bool:g_bStealthCanUse[MAXPLAYERS + 1] =  { true, ... };
-new bool:g_bBootsCanUse[MAXPLAYERS + 1] =  { true, ... };
 new bool:g_bLocked[MAXPLAYERS + 1] =  { false, ... };
 new bool:g_bTriggered[2048] =  { false, ... };
 new bool:g_bCamCanUse[MAXPLAYERS + 1] =  { true, ... };
@@ -263,6 +263,8 @@ new bool:g_bSmokegrenadeCanUse[MAXPLAYERS + 1] =  { true, ... };
 new bool:g_bSnapping[MAXPLAYERS + 1] =  { false, ... };
 new bool:g_bGroups[MAXPLAYERS + 1][2048];
 new bool:g_bRandomCantUse[MAXPLAYERS + 1];
+
+bool g_bCanUseMoney[MAXPLAYERS + 1] = {true, ...};
 
 new Handle:Block_Timers[64] = {INVALID_HANDLE, ...};
 new Block_Touching[MAXPLAYERS + 1] = 0;
@@ -528,13 +530,13 @@ public Action:RoundStart(Handle:event, const String:name[], bool:dontBroadcast)
 		g_bSmokegrenadeCanUse[i] = true;
 		g_iCurrentTele[i] = -1;
 		g_bStealthCanUse[i] = true;
-		g_bBootsCanUse[i] = true;
 		g_bLocked[i] = false;
 		g_bNoFallDmg[i] = false;
 		g_bCamCanUse[i] = true;
 		g_bAwpCanUse[i] = true;
 		g_bDeagleCanUse[i] = true;
 		g_bRandomCantUse[i] = false;
+		g_bCanUseMoney[i] = true;
 	}
 	RoundIndex++
 	LoadBlocks();
@@ -549,7 +551,7 @@ public Action:RoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 public OnClientPutInServer(client)
 {
 	g_bStealthCanUse[client] = true;
-	g_bBootsCanUse[client] = true;
+	g_bCanUseMoney[client] = true;
 	g_bLocked[client] = false;
 	g_bNoFallDmg[client] = false;
 	g_bCamCanUse[client] = true;
@@ -561,9 +563,15 @@ public OnClientPutInServer(client)
 	g_iCurrentTele[client] = -1;
 	g_bSnapping[client] = true;
 	g_bRandomCantUse[client] = false;
-	g_fSnappingGap[client] = 0.0
+	g_fSnappingGap[client] = 0.0;
+
 	for (new i = 0; i < 2048; ++i)
-	g_bGroups[client][i] = false;
+		g_bGroups[client][i] = false;
+
+	for(int i = 0; i < view_as<int>(e_PlayerEffects); i++)
+		ResetPlayerEffect(client, e_PlayerEffects:i);
+
+	SDKUnhook(client, SDKHook_OnTakeDamage, INVINCIBLITY_OnTakeDamage);
 
 }
 
@@ -918,70 +926,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 
 		ShowReadOnlyPropertyPanelAiming(client);
 	}
-	/*new Float:fPos[3];
-	new Float:fPos2[3];
-	GetClientAbsOrigin(client, fPos);
-	fPos[2] += 50.0;
 
-	for (new a = MaxClients + 1; a < 2048; ++a)
-	{
-		if (GetClientTeam(client) < 2)
-			continue;
-
-		else if (g_iBlocks[a] == 14 || g_iBlocks[a] == 43 || g_iBlocks[a] == 72 || g_iBlocks[a] == 101) // CT Barrier
-		{
-			if (GetClientTeam(client) == 3)
-			{
-				if (!g_bLocked[client])
-				{
-					GetEntPropVector(a, Prop_Data, "m_vecOrigin", fPos2);
-					if (fPos[0] - 60.0 < fPos2[0] < fPos[0] + 60.0 && fPos[1] - 60.0 < fPos2[1] < fPos[1] + 60.0 && fPos[2] - 120.0 < fPos2[2] < fPos[2] + 120.0)
-					{
-						new Float:fVelocity[3];
-						GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVelocity);
-						ScaleVector(fVelocity, -2.0);
-						fVelocity[2] = 0.0;
-						g_bLocked[client] = true;
-						CreateTimer(0.1, ResetLock, client);
-
-						TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, fVelocity);
-					}
-				}
-			}
-		}
-		else if (g_iBlocks[a] == 15 || g_iBlocks[a] == 44 || g_iBlocks[a] == 73 || g_iBlocks[a] == 102) // T Barrier
-		{
-
-			if (GetClientTeam(client) == 2)
-			{
-				if (!g_bLocked[client])
-				{
-					GetEntPropVector(a, Prop_Data, "m_vecOrigin", fPos2);
-					if (fPos[0] - 60.0 < fPos2[0] < fPos[0] + 60.0 && fPos[1] - 60.0 < fPos2[1] < fPos[1] + 60.0 && fPos[2] - 120.0 < fPos2[2] < fPos[2] + 120.0)
-					{
-						new Float:fVelocity[3];
-						GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVelocity);
-						ScaleVector(fVelocity, -2.0);
-						fVelocity[2] = 0.0;
-						g_bLocked[client] = true;
-						CreateTimer(0.1, ResetLock, client);
-
-						TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, fVelocity);
-					}
-				}
-			}
-		}
-		else if (g_iBlocks[a] == 19 || g_iBlocks[a] == 5 || g_iBlocks[a] == 6 || g_iBlocks[a] == 35 || g_iBlocks[a] == 64 || g_iBlocks[a] == 93 || g_iBlocks[a] == 36 || g_iBlocks[a] == 65 || g_iBlocks[a] == 94 || g_iBlocks[a] == 48 || g_iBlocks[a] == 77 || g_iBlocks[a] == 105) // NOFALLDAMAGE for the NOFALLDMG Block TRAMPOLINE AND SPEEDBOOST
-		{
-			GetEntPropVector(a, Prop_Data, "m_vecOrigin", fPos2);
-			if (GetVectorDistance(fPos, fPos2) <= 100.0)
-			{
-				if (!g_bNoFallDmg[client])
-					CreateTimer(0.2, ResetNoFall, client);
-				g_bNoFallDmg[client] = true;
-			}
-		}
-	}*/
 	if (g_iDragEnt[client] != 0)
 	{
 		if (IsValidEdict(g_iDragEnt[client]))
@@ -1796,7 +1741,7 @@ public Action:OnStartTouch(block, client)
 			if(g_PlayerEffects[client][Stealth][canUse])
 			{
 				SetEntityRenderMode(client, RENDER_NONE);
-				SetPlayerEffect(client, Stealth, g_fPropertyValue[block][0],
+				SetPlayerEffect(client, Stealth, g_fPropertyValue[block][0] + float(mm_GetStealthTime(client)),
 					g_fPropertyValue[block][1], STEALTH_end, STEALTH_cdEnd);
 			}
 		}
@@ -1810,7 +1755,7 @@ public Action:OnStartTouch(block, client)
 				SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
 				SetEntityRenderColor(client, 230, 230, 40, 255);
 
-				SetPlayerEffect(client, Invincibility, g_fPropertyValue[block][0],
+				SetPlayerEffect(client, Invincibility, g_fPropertyValue[block][0] + float(mm_GetInvincibilityTime(client)),
 					g_fPropertyValue[block][1], INVINCIBLITY_end, INVINCIBLITY_cdEnd);
 			}
 		}
@@ -1821,8 +1766,20 @@ public Action:OnStartTouch(block, client)
 			{
 				SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", g_fPropertyValue[block][2] / 250.0);
 
-				SetPlayerEffect(client, BootsOfSpeed, g_fPropertyValue[block][0],
+				SetPlayerEffect(client, BootsOfSpeed, g_fPropertyValue[block][0] + float(mm_GetBootsTime(client)),
 					g_fPropertyValue[block][1], BOOTS_OF_SPEED_end, BOOTS_OF_SPEED_cdEnd);
+			}
+		}
+		case MONEY: {
+			CloseHandle(pack);
+
+			if(g_bCanUseMoney[client])
+			{
+				mm_AddMoney(client, RoundFloat(g_fPropertyValue[block][0]));
+				PrintToChat(client, "%s\x03 You have received\x04 $%i\03 from the moneyblock!",
+					CHAT_TAG, RoundFloat(g_fPropertyValue[block][0]));
+
+				g_bCanUseMoney[client] = false;
 			}
 		}
 		default: {
@@ -2257,43 +2214,6 @@ public Action STEALTH_cdEnd(Handle timer, any userid)
 	g_PlayerEffects[client][Stealth][canUse] = true;
 	PrintToChat(client, "\x03%s\x04 Stealth\x01 cooldown has ended.", CHAT_TAG);
 
-	return Plugin_Stop;
-}
-
-public Action:ResetBoots(Handle:timer, any:packet)
-{
-	ResetPack(packet)
-	new index = ReadPackCell(packet)
-	if (index != RoundIndex)
-	{
-		KillTimer(timer, true)
-		return Plugin_Handled;
-	}
-	new client = ReadPackCell(packet)
-
-	if (!IsClientInGame(client))
-		return Plugin_Stop;
-	SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.0);
-	//	PrintToChat(client, "\x03%s\x04 Boots of Speed has worn off.", CHAT_TAG);
-	return Plugin_Stop;
-}
-
-public Action:ResetBootsCooldown(Handle:timer, any:packet)
-{
-	ResetPack(packet)
-	new index = ReadPackCell(packet)
-	if (index != RoundIndex)
-	{
-		KillTimer(timer, true)
-		return Plugin_Handled;
-	}
-	new client = ReadPackCell(packet)
-
-	if (!IsClientInGame(client))
-		return Plugin_Stop;
-
-	g_bBootsCanUse[client] = true;
-	PrintToChat(client, "\x03%s\x04 Boots of Speed block cooldown has worn off.", CHAT_TAG);
 	return Plugin_Stop;
 }
 
@@ -2819,40 +2739,40 @@ public ResetPlayerEffect(int client, e_PlayerEffects effect)
 
 stock ClearTimer(&Handle:timer)
 {
-    if (timer != INVALID_HANDLE)
-    {
-        KillTimer(timer);
-    }
-    timer = INVALID_HANDLE;
+	if (timer != INVALID_HANDLE)
+	{
+		KillTimer(timer);
+	}
+	timer = INVALID_HANDLE;
 }
 
 // thanks Mitchell
 stock IsPlayerStuck(client) {
-    decl Float:vecMin[3], Float:vecMax[3], Float:vecOrigin[3];
+	decl Float:vecMin[3], Float:vecMax[3], Float:vecOrigin[3];
 
-    GetClientMins(client, vecMin);
-    GetClientMaxs(client, vecMax);
+	GetClientMins(client, vecMin);
+	GetClientMaxs(client, vecMax);
 
-    GetClientAbsOrigin(client, vecOrigin);
+	GetClientAbsOrigin(client, vecOrigin);
 
-    TR_TraceHullFilter(vecOrigin, vecOrigin, vecMin, vecMax, MASK_PLAYERSOLID, TraceRayDontHitPlayerAndWorld);
-    return TR_GetEntityIndex();
+	TR_TraceHullFilter(vecOrigin, vecOrigin, vecMin, vecMax, MASK_PLAYERSOLID, TraceRayDontHitPlayerAndWorld);
+	return TR_GetEntityIndex();
 }
 stock bool:IsStuckInEnt(client, ent) {
-    decl Float:vecMin[3], Float:vecMax[3], Float:vecOrigin[3];
+	decl Float:vecMin[3], Float:vecMax[3], Float:vecOrigin[3];
 
-    GetClientMins(client, vecMin);
-    GetClientMaxs(client, vecMax);
+	GetClientMins(client, vecMin);
+	GetClientMaxs(client, vecMax);
 
-    GetClientAbsOrigin(client, vecOrigin);
+	GetClientAbsOrigin(client, vecOrigin);
 
-    TR_TraceHullFilter(vecOrigin, vecOrigin, vecMin, vecMax, MASK_ALL, TraceRayHitOnlyEnt, ent);
-    return TR_DidHit();
+	TR_TraceHullFilter(vecOrigin, vecOrigin, vecMin, vecMax, MASK_ALL, TraceRayHitOnlyEnt, ent);
+	return TR_DidHit();
 }
 
 public bool:TraceRayDontHitPlayerAndWorld(entityhit, mask) {
-    return entityhit>MaxClients
+	return entityhit>MaxClients
 }
 public bool:TraceRayHitOnlyEnt(entityhit, mask, any:data) {
-    return entityhit==data;
+	return entityhit==data;
 }
