@@ -9,6 +9,7 @@
 #include <sdktools>
 #include <sdkhooks>
 #include <smlib>
+#include <cstrike>
 #include <mm>
 
 #define CHAT_TAG "[TeamMates]"
@@ -1773,11 +1774,11 @@ public Action:OnStartTouch(block, client)
 		case MONEY: {
 			CloseHandle(pack);
 
-			if(g_bCanUseMoney[client])
+			if(g_bCanUseMoney[client] && GetClientTeam(client) == CS_TEAM_T)
 			{
-				mm_AddMoney(client, RoundFloat(g_fPropertyValue[block][0]));
+				int money = mm_AddMoney(client, RoundFloat(g_fPropertyValue[block][0]), 1.5);
 				PrintToChat(client, "%s\x03 You have received\x04 $%i\03 from the moneyblock!",
-					CHAT_TAG, RoundFloat(g_fPropertyValue[block][0]));
+					CHAT_TAG, money);
 
 				g_bCanUseMoney[client] = false;
 			}
