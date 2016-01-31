@@ -220,12 +220,21 @@ new const String:g_PlayerEffectsNames[e_PlayerEffects][] = {
 	"Boots of Speed"
 };
 
-new const String:INVI_SOUND_PATH[] = "*blockbuilder/invincibility.mp3"
-new const String:STEALTH_SOUND_PATH[] = "*blockbuilder/stealth.mp3"
-new const String:NUKE_SOUND_PATH[] = "*blockbuilder/nuke.mp3"
-new const String:BOS_SOUND_PATH[] = "*blockbuilder/bootsofspeed.mp3"
-new const String:CAM_SOUND_PATH[] = "*blockbuilder/camouflage.mp3"
-new const String:TELE_SOUND_PATH[] = "*blockbuilder/teleport.mp3"
+new const String:FULL_INVI_SOUND_PATH[] = 	"sound/teammates/invincibility.mp3";
+new const String:REL_INVI_SOUND_PATH[] = 	"*teammates/invincibility.mp3";
+
+new const String:FULL_STEALTH_SOUND_PATH[] = "sound/teammates/stealth.mp3";
+new const String:REL_STEALTH_SOUND_PATH[] =  "*teammates/stealth.mp3";
+
+new const String:FULL_BOS_SOUND_PATH[] = "sound/teammates/bootsofspeed.mp3";
+new const String:REL_BOS_SOUND_PATH[] = "*teammates/bootsofspeed.mp3";
+
+new const String:FULL_TELE_SOUND_PATH[] = "sound/teammates/teleport.mp3";
+new const String:REL_TELE_SOUND_PATH[] = "*teammates/teleport.mp3";
+
+new const String:FULL_MONEY_SOUND_PATH[] = "sound/teammates/money.mp3";
+new const String:REL_MONEY_SOUND_PATH[] = "*teammates/money.mp3";
+
 
 new bool:g_bTouchStartTriggered[MAXPLAYERS + 1];
 
@@ -252,7 +261,6 @@ new Block_Transparency[2048] = 0
 new Float:g_fGrabOffset[MAXPLAYERS + 1];
 
 new bool:g_bNoFallDmg[MAXPLAYERS + 1] =  { false, ... };
-new bool:g_bStealthCanUse[MAXPLAYERS + 1] =  { true, ... };
 new bool:g_bLocked[MAXPLAYERS + 1] =  { false, ... };
 new bool:g_bTriggered[2048] =  { false, ... };
 new bool:g_bCamCanUse[MAXPLAYERS + 1] =  { true, ... };
@@ -263,7 +271,11 @@ new bool:g_bFlashbangCanUse[MAXPLAYERS + 1] =  { true, ... };
 new bool:g_bSmokegrenadeCanUse[MAXPLAYERS + 1] =  { true, ... };
 new bool:g_bSnapping[MAXPLAYERS + 1] =  { false, ... };
 new bool:g_bGroups[MAXPLAYERS + 1][2048];
-new bool:g_bRandomCantUse[MAXPLAYERS + 1];
+
+
+//GHOST
+new g_Collision;
+bool g_bGhost[MAXPLAYERS + 1];
 
 bool g_bCanUseMoney[MAXPLAYERS + 1] = {true, ...};
 
@@ -303,6 +315,8 @@ public Plugin:myinfo =
 
 public OnPluginStart()
 {
+	g_Collision = FindSendPropInfo("CBaseEntity", "m_CollisionGroup");
+
 	g_hTeleSound = CreateConVar("sm_blockbuilder_telesound", "blockbuilder/teleport.mp3");
 
 	//
@@ -327,6 +341,11 @@ public OnPluginStart()
 
 	AddCommandListener(OnSayCmd, "say");
 	AddCommandListener(OnSayCmd, "say_team");
+
+	//GHOST
+	RegConsoleCmd("sm_ghost", Command_Ghost);
+	AddNormalSoundHook(OnNormalSoundPlayed);
+	HookEvent("player_spawn", Event_PlayerSpawn);
 
 	HookEvent("round_start", RoundStart);
 	HookEvent("round_end", RoundEnd);
@@ -364,6 +383,101 @@ public OnPluginStart()
 	CloseHandle(kv);
 
 	g_hBlocksKV = CreateKeyValues("Blocks");
+}
+
+public void OnClientPostAdminCheck(client) {
+    SDKHookEx(client, SDKHook_StartTouch, StartTouch);
+}
+
+public Action:StartTouch(client, victim)
+{
+    if(!g_bGhost[client] && 0 < victim <= MaxClients && GetClientTeam(victim) != GetClientTeam(client))
+    {
+        new ground = GetEntPropEnt(client, Prop_Send, "m_hGroundEntity");
+
+        if(ground == victim
+		&& GetEntityFlags(victim) & FL_ONGROUND){
+			SDKHooks_TakeDamage(victim, client, client, 8.0);
+		}
+	}
+}
+
+public Action:Event_PlayerSpawn(Handle event, const char[] name, bool dontBroadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	//SDKHook(client, SDKHook_SetTransmit, Hook_SetTransmit);
+
+	if(g_bGhost[client]) {
+		g_bGhost[client] = false;
+		GhostUnhook(client);
+	}
+}
+
+public Action:Command_Ghost(client, args)
+{
+	MakePlayerGhost(client);
+}
+
+public Action:OnTraceAttack(victim, &attacker, &inflictor, &Float:damage, &damagetype, &ammotype, hitbox, hitgroup)
+{
+	if(IsValidEntity(victim) && g_bGhost[victim])
+		return Plugin_Handled;
+
+	return Plugin_Continue;
+}
+
+public Action:OnWeaponCanUse(client, weapon)
+{
+	return g_bGhost[client] ? Plugin_Handled : Plugin_Continue;
+}
+
+public Action:OnNormalSoundPlayed(clients[64], &numClients, String:sample[PLATFORM_MAX_PATH], &entity, &channel, &Float:volume, &level, &pitch, &flags)
+{
+	if(entity && entity <= MaxClients && g_bGhost[entity])
+		return Plugin_Handled;
+
+	return Plugin_Continue;
+}
+
+GhostUnhook(client)
+{
+	SDKUnhook(client, SDKHook_TraceAttack, OnTraceAttack);
+	SDKUnhook(client, SDKHook_WeaponCanUse, OnWeaponCanUse);
+}
+
+MakePlayerGhost(client)
+{
+	if(IsPlayerAlive(client) || GetClientTeam(client) <= 1)
+	{
+		PrintToChat(client, "%s\x06You must be dead to use\x04 !ghost\x06!", PREFIX);
+		return;
+	}
+
+	g_bGhost[client] = false;
+	CS_RespawnPlayer(client);
+	g_bGhost[client] = true;
+
+	new weaponIndex;
+	for (new i = 0; i <= 3; i++)
+	{
+		if ((weaponIndex = GetPlayerWeaponSlot(client, i)) != -1)
+		{
+			RemovePlayerItem(client, weaponIndex);
+			RemoveEdict(weaponIndex);
+		}
+	}
+
+	SetEntProp(client, Prop_Send, "m_lifeState", 1);
+	SetEntData(client, g_Collision, 2, 4, true);
+	SetEntProp(client, Prop_Data, "m_ArmorValue", 0);
+	SetEntProp(client, Prop_Send, "m_bHasDefuser", 0);
+
+	SDKHook(client, SDKHook_TraceAttack, OnTraceAttack);
+	SDKHook(client, SDKHook_WeaponCanUse, OnWeaponCanUse);
+
+	//unhook on round start for perfomance
+
+	PrintToChat(client, "%s\x06You are a\x04 !ghost\x06 now!", PREFIX);
 }
 
 public Action:Command_BlockProperty(client, args)
@@ -530,14 +644,14 @@ public Action:RoundStart(Handle:event, const String:name[], bool:dontBroadcast)
 		g_bFlashbangCanUse[i] = true;
 		g_bSmokegrenadeCanUse[i] = true;
 		g_iCurrentTele[i] = -1;
-		g_bStealthCanUse[i] = true;
 		g_bLocked[i] = false;
 		g_bNoFallDmg[i] = false;
 		g_bCamCanUse[i] = true;
 		g_bAwpCanUse[i] = true;
 		g_bDeagleCanUse[i] = true;
-		g_bRandomCantUse[i] = false;
 		g_bCanUseMoney[i] = true;
+
+		Block_Touching[i] = 0;
 	}
 	RoundIndex++
 	LoadBlocks();
@@ -551,7 +665,6 @@ public Action:RoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 
 public OnClientPutInServer(client)
 {
-	g_bStealthCanUse[client] = true;
 	g_bCanUseMoney[client] = true;
 	g_bLocked[client] = false;
 	g_bNoFallDmg[client] = false;
@@ -563,8 +676,9 @@ public OnClientPutInServer(client)
 	//	g_iClientBlocks[client]=-1;
 	g_iCurrentTele[client] = -1;
 	g_bSnapping[client] = true;
-	g_bRandomCantUse[client] = false;
 	g_fSnappingGap[client] = 0.0;
+
+	g_bGhost[client] = false;
 
 	for (new i = 0; i < 2048; ++i)
 		g_bGroups[client][i] = false;
@@ -626,14 +740,22 @@ public OnMapStart()
 	PrecacheModel("models/player/ctm_gign.mdl");
 	PrecacheModel("models/player/tm_phoenix.mdl");
 
-	FakePrecacheSound(INVI_SOUND_PATH);
-	FakePrecacheSound(STEALTH_SOUND_PATH);
-	FakePrecacheSound(NUKE_SOUND_PATH);
-	FakePrecacheSound(BOS_SOUND_PATH);
-	FakePrecacheSound(CAM_SOUND_PATH);
-	FakePrecacheSound(TELE_SOUND_PATH);
+	AddFileToDownloadsTable(FULL_INVI_SOUND_PATH);
+	FakePrecacheSound(REL_INVI_SOUND_PATH);
 
-	DownloadsTable()
+	AddFileToDownloadsTable(FULL_STEALTH_SOUND_PATH);
+	FakePrecacheSound(REL_STEALTH_SOUND_PATH);
+
+	AddFileToDownloadsTable(FULL_BOS_SOUND_PATH);
+	FakePrecacheSound(REL_BOS_SOUND_PATH);
+
+	AddFileToDownloadsTable(FULL_TELE_SOUND_PATH);
+	FakePrecacheSound(REL_TELE_SOUND_PATH);
+
+	AddFileToDownloadsTable(FULL_MONEY_SOUND_PATH);
+	FakePrecacheSound(REL_MONEY_SOUND_PATH);
+
+	DownloadsTable();
 
 	g_iBeamSprite = PrecacheModel("materials/sprites/orangelight1.vmt");
 
@@ -1612,7 +1734,7 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 	return Plugin_Continue;
 }
 
-public Action:Teleport_Action(Handle:timer, any:pack) {
+public Teleport_Action(any:pack) {
 	ResetPack(pack);
 	new client = ReadPackCell(pack);
 	new block = ReadPackCell(pack);
@@ -1626,12 +1748,10 @@ public Action:Teleport_Action(Handle:timer, any:pack) {
 
 	Vec[2] = FloatAbs(Vec[2])*1.0;
 
-	TeleportEntity(client, exitPos, NULL_VECTOR, NULL_VECTOR);
 	TeleportEntity(client, exitPos, NULL_VECTOR, Vec);
 
-	EmitSoundToClient(client, TELE_SOUND_PATH);
-
-	return Plugin_Stop;
+	EmitSoundToClient(client, REL_TELE_SOUND_PATH);
+	EmitSoundToAll(REL_TELE_SOUND_PATH, block, SNDCHAN_AUTO);
 }
 
 public Action:OnStartTouch(block, client)
@@ -1650,7 +1770,7 @@ public Action:OnStartTouch(block, client)
 		pack.WriteCell(client);
 		pack.WriteCell(block);
 
-		CreateTimer(0.0, Teleport_Action, pack);
+		RequestFrame(Teleport_Action, pack);
 
 		return Plugin_Handled;
 	}
@@ -1671,20 +1791,119 @@ public Action:OnStartTouch(block, client)
 	if(g_bTriggered[block]) //kinda experimental
 		return Plugin_Continue;
 
+	bool packUsed = false;
 	DataPack pack = CreateDataPack();
 	pack.WriteCell(client);
 	pack.WriteCell(block);
 
-	switch(g_iBlocks[block]) {
+	//now this shit is experimental
+	if(!g_bGhost[client])
+	{
+		switch(g_iBlocks[block]) {
+			case DAMAGE: {
+				packUsed = true;
+
+				ClearTimer(Block_Timers[client]);
+				Block_Timers[client] = CreateTimer(0.0, DamagePlayer, pack);
+			}
+			case HEALTH: {
+				packUsed = true;
+
+				ClearTimer(Block_Timers[client]);
+				Block_Timers[client] = CreateTimer(g_fPropertyValue[block][0], HealPlayer, pack);
+			}
+			case BUNNYHOP: {
+				g_bTriggered[block] = true;
+				CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
+			}
+			case BUNNYHOP_DELAYED: {
+				g_bTriggered[block] = true;
+				CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
+			}
+			case BUNNYHOP_NSD: {
+				g_bTriggered[block] = true;
+				CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
+				SetEntPropFloat(client, Prop_Send, "m_flStamina", 0.0);
+			}
+			case BARRIER_CT: {
+				if(GetClientTeam(client) == 2) {
+					g_bTriggered[block] = true;
+					if(g_fPropertyValue[block][0] < 0.05)
+						StartNoBlock(block);
+					else
+						CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
+				}
+			}
+			case GRAVITY: {
+				SetEntityGravity(client, g_fPropertyValue[block][0]);
+				//SDKHook(client, SDKHook_GroundEntChangedPost, Gravity_GroundEntChanged);
+			}
+			case STEALTH: {
+				if(g_PlayerEffects[client][Stealth][canUse])
+				{
+					SetEntityRenderMode(client, RENDER_NONE);
+					SetPlayerEffect(client, Stealth, g_fPropertyValue[block][0] + float(mm_GetStealthTime(client)),
+						g_fPropertyValue[block][1], STEALTH_end, STEALTH_cdEnd);
+
+					EmitSoundToAll(REL_STEALTH_SOUND_PATH, block, SNDCHAN_AUTO);
+				}
+			}
+			case INVINCIBLITY: {
+
+				if(g_PlayerEffects[client][Invincibility][canUse])
+				{
+					SDKHook(client, SDKHook_OnTakeDamage, INVINCIBLITY_OnTakeDamage);
+					SetEntityRenderMode(client, RENDER_GLOW);
+					SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
+					SetEntityRenderColor(client, 230, 230, 40, 255);
+
+					SetPlayerEffect(client, Invincibility, g_fPropertyValue[block][0] + float(mm_GetInvincibilityTime(client)),
+						g_fPropertyValue[block][1], INVINCIBLITY_end, INVINCIBLITY_cdEnd);
+
+					EmitSoundToAll(REL_INVI_SOUND_PATH, block, SNDCHAN_AUTO);
+				}
+			}
+			case BOOTS_OF_SPEED: {
+
+				if(g_PlayerEffects[client][BootsOfSpeed][canUse])
+				{
+					SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", g_fPropertyValue[block][2] / 250.0);
+
+					SetPlayerEffect(client, BootsOfSpeed, g_fPropertyValue[block][0] + float(mm_GetBootsTime(client)),
+						g_fPropertyValue[block][1], BOOTS_OF_SPEED_end, BOOTS_OF_SPEED_cdEnd);
+
+					EmitSoundToAll(REL_BOS_SOUND_PATH, block, SNDCHAN_AUTO);
+				}
+			}
+			case MONEY: {
+
+				if(g_bCanUseMoney[client] && GetClientTeam(client) == CS_TEAM_T)
+				{
+					int money = mm_AddMoney(client, RoundFloat(g_fPropertyValue[block][0]), 1.5);
+					PrintToChat(client, "%s\x03 You have received\x04 $%i\03 from the moneyblock!",
+						CHAT_TAG, money);
+
+					EmitSoundToAll(REL_MONEY_SOUND_PATH, block, SNDCHAN_AUTO);
+
+					g_bCanUseMoney[client] = false;
+				}
+			}
+		}
+	}
+
+	switch(g_iBlocks[block])
+	{
 		case TRAMPOLINE: {
+			packUsed = true;
+
 			RequestFrame(Trampoline_Action, pack);
 			g_bNoFallDmg[client] = true;
 		}
 		case SPEEDBOOST: {
+			packUsed = true;
 			CreateTimer(0.0, BoostPlayer, pack);
 		}
 		case DEATH: {
-			CloseHandle(pack);
 
 			if (IsPlayerAlive(client))
 			{
@@ -1695,158 +1914,11 @@ public Action:OnStartTouch(block, client)
 				}
 			}
 		}
-		case DAMAGE: {
-			ClearTimer(Block_Timers[client]);
-
-			Block_Timers[client] = CreateTimer(0.0, DamagePlayer, pack);
-		}
-		case HEALTH: {
-			ClearTimer(Block_Timers[client]);
-
-			Block_Timers[client] = CreateTimer(g_fPropertyValue[block][0], HealPlayer, pack);
-		}
-		case BUNNYHOP: {
-			CloseHandle(pack);
-			g_bTriggered[block] = true;
-			CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
-		}
-		case BUNNYHOP_DELAYED: {
-			CloseHandle(pack);
-			g_bTriggered[block] = true;
-			CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
-		}
-		case BUNNYHOP_NSD: {
-			CloseHandle(pack);
-			g_bTriggered[block] = true;
-			CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
-			SetEntPropFloat(client, Prop_Send, "m_flStamina", 0.0);
-		}
-		case BARRIER_CT: {
-			CloseHandle(pack);
-			if(GetClientTeam(client) == 2) {
-				g_bTriggered[block] = true;
-				if(g_fPropertyValue[block][0] < 0.05)
-					StartNoBlock(block);
-				else
-					CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
-			}
-		}
-		case GRAVITY: {
-			SetEntityGravity(client, g_fPropertyValue[block][0]);
-			CloseHandle(pack);
-			//SDKHook(client, SDKHook_GroundEntChangedPost, Gravity_GroundEntChanged);
-		}
-		case STEALTH: {
-			CloseHandle(pack);
-
-			if(g_PlayerEffects[client][Stealth][canUse])
-			{
-				SetEntityRenderMode(client, RENDER_NONE);
-				SetPlayerEffect(client, Stealth, g_fPropertyValue[block][0] + float(mm_GetStealthTime(client)),
-					g_fPropertyValue[block][1], STEALTH_end, STEALTH_cdEnd);
-			}
-		}
-		case INVINCIBLITY: {
-			CloseHandle(pack);
-
-			if(g_PlayerEffects[client][Invincibility][canUse])
-			{
-				SDKHook(client, SDKHook_OnTakeDamage, INVINCIBLITY_OnTakeDamage);
-				SetEntityRenderMode(client, RENDER_GLOW);
-				SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
-				SetEntityRenderColor(client, 230, 230, 40, 255);
-
-				SetPlayerEffect(client, Invincibility, g_fPropertyValue[block][0] + float(mm_GetInvincibilityTime(client)),
-					g_fPropertyValue[block][1], INVINCIBLITY_end, INVINCIBLITY_cdEnd);
-			}
-		}
-		case BOOTS_OF_SPEED: {
-			CloseHandle(pack);
-
-			if(g_PlayerEffects[client][BootsOfSpeed][canUse])
-			{
-				SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", g_fPropertyValue[block][2] / 250.0);
-
-				SetPlayerEffect(client, BootsOfSpeed, g_fPropertyValue[block][0] + float(mm_GetBootsTime(client)),
-					g_fPropertyValue[block][1], BOOTS_OF_SPEED_end, BOOTS_OF_SPEED_cdEnd);
-			}
-		}
-		case MONEY: {
-			CloseHandle(pack);
-
-			if(g_bCanUseMoney[client] && GetClientTeam(client) == CS_TEAM_T)
-			{
-				int money = mm_AddMoney(client, RoundFloat(g_fPropertyValue[block][0]), 1.5);
-				PrintToChat(client, "%s\x03 You have received\x04 $%i\03 from the moneyblock!",
-					CHAT_TAG, money);
-
-				g_bCanUseMoney[client] = false;
-			}
-		}
-		default: {
-			CloseHandle(pack);
-		}
 	}
 
-	if (false && FL_ONGROUND && GetEntPropEnt(client, Prop_Send, "m_hGroundEntity") == block)
-	{
-		if (g_iBlocks[block] == 21 || g_iBlocks[block] == 50 || g_iBlocks[block] == 79 || g_iBlocks[block] == 108)
-		{
-			if (g_bCamCanUse[client])
-			{
-				if (GetClientTeam(client) == 2)
-					SetEntityModel(client, "models/player/ctm_gign.mdl");
-				else if (GetClientTeam(client) == 3)
-					SetEntityModel(client, "models/player/tm_phoenix.mdl");
-				g_bCamCanUse[client] = false;
-				new Handle:packet_f = CreateDataPack()
-				WritePackCell(packet_f, RoundIndex)
-				WritePackCell(packet_f, client)
-				CreateTimer(g_eBlocks[21][EffectTime], ResetCamouflage, packet_f);
-				CreateTimer(g_eBlocks[21][CooldownTime], ResetCamCanUse, packet_f);
+	if(!packUsed)
+		CloseHandle(pack);
 
-				new Handle:packet = CreateDataPack()
-				WritePackCell(packet, RoundIndex)
-				WritePackCell(packet, client)
-				WritePackCell(packet, RoundFloat(g_eBlocks[21][EffectTime]))
-				WritePackString(packet, "Camouflage")
-				EmitSoundToClient(client, CAM_SOUND_PATH, block)
-				CreateTimer(1.0, TimeLeft, packet)
-			}
-		}
-		else if (g_iBlocks[block] == 22 || g_iBlocks[block] == 51 || g_iBlocks[block] == 80 || g_iBlocks[block] == 109)
-		{
-			if (g_bDeagleCanUse[client])
-			{
-				if (GetClientTeam(client) == 2)
-				{
-					new ent = -1;
-					ent = Client_GiveWeaponAndAmmo(client, "weapon_deagle", true, 0, 1, 1, 1);
-					SetEntProp(ent, Prop_Data, "m_iClip1", 1);
-					SetEntProp(ent, Prop_Data, "m_iClip2", 1);
-					SetEntData(client, g_iAmmo + (GetEntData(ent, g_iPrimaryAmmoType) << 2), 0, 4, true);
-					PrintToChatAll("\x03%s\x04 %N has got a DEAGLE", CHAT_TAG, client);
-					g_bDeagleCanUse[client] = false;
-				}
-			}
-		}
-		else if (g_iBlocks[block] == 23 || g_iBlocks[block] == 52 || g_iBlocks[block] == 81 || g_iBlocks[block] == 110)
-		{
-			if (g_bAwpCanUse[client])
-			{
-				if (GetClientTeam(client) == 2)
-				{
-					new ent = -1;
-					ent = Client_GiveWeaponAndAmmo(client, "weapon_awp", true, 0, 1, 1, 1);
-					SetEntProp(ent, Prop_Data, "m_iClip1", 1);
-					SetEntProp(ent, Prop_Data, "m_iClip2", 1);
-					SetEntData(client, g_iAmmo + (GetEntData(ent, g_iPrimaryAmmoType) << 2), 0, 4, true);
-					PrintToChatAll("\x03%s\x04 %N has got an AWP", CHAT_TAG, client);
-					g_bAwpCanUse[client] = false;
-				}
-			}
-		}
-	}
 	return Plugin_Continue;
 }
 
@@ -1860,18 +1932,6 @@ public Action Gravity_GroundEntChanged(client)
 		SDKUnhook(client, SDKHook_GroundEntChangedPost, Gravity_GroundEntChanged);
 
 	SetEntityGravity(client, 1.0);
-}
-
-public Action:ResetCooldownRandom(Handle:timer, any:packet)
-{
-	ResetPack(packet)
-	new client = ReadPackCell(packet)
-	new round = ReadPackCell(packet)
-	if (round == RoundIndex)
-	{
-		g_bRandomCantUse[client] = false;
-		PrintToChat(client, "\x03%s\x04 Random block cooldown has worn off.", CHAT_TAG);
-	}
 }
 
 public Action:Stealth_SetTransmit(entity, clients)
@@ -1967,7 +2027,9 @@ public Action:OnTouch(block, client)
 			g_bNoFallDmg[client] = true;
 		}
 	}
-	Block_Touching[client] = g_iBlocks[block]
+
+	if(g_iBlocks[block] != _:DEATH)
+		Block_Touching[client] = g_iBlocks[block]
 
 	return Plugin_Continue;
 }
@@ -2025,27 +2087,9 @@ public Action:OnEndTouch(block, client)
 	return Plugin_Continue;
 }
 
-public Action:ResetFire(Handle:timer, any:client)
-{
-	if (Block_Touching[client] != 12 && Block_Touching[client] != 41 && Block_Touching[client] != 70 && Block_Touching[client] != 99)
-	{
-		new ent = GetEntPropEnt(client, Prop_Data, "m_hEffectEntity");
-		if (IsValidEdict(ent))
-			SetEntPropFloat(ent, Prop_Data, "m_flLifetime", 0.0);
-	}
-}
-
 public Action:BlockTouch_End(Handle:timer, any:client)
 {
 	Block_Touching[client] = 0;
-}
-
-public Action:ResetHoney(Handle:timer, any:client)
-{
-	if (Block_Touching[client] != 20 && Block_Touching[client] != 49 && Block_Touching[client] != 78 && Block_Touching[client] != 107)
-	{
-		SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.0);
-	}
 }
 
 public Action:DamagePlayer(Handle:timer, any:pack)
@@ -2247,21 +2291,12 @@ public Trampoline_Action(any:pack)
 	new client = ReadPackCell(pack);
 	new block = ReadPackCell(pack);
 	CloseHandle(pack);
-	//new Float:fAngles[3];
-	//GetClientEyeAngles(client, fAngles);
 
 	new Float:fVelocity[3];
-	//GetAngleVectors(fAngles, fVelocity, NULL_VECTOR, NULL_VECTOR);
-
 	GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVelocity);
 
-	//fVelocity[0] *= 1.15;
-	//fVelocity[1] *= 1.15;
 	fVelocity[2] = g_fPropertyValue[block][0];
-
 	TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, fVelocity);
-
-	//return Plugin_Stop;
 }
 
 public Action:SlapPlayerBlock(Handle:timer, any:client)
