@@ -1632,6 +1632,9 @@ CreateTeleportEntrance(client, Float:fPos[3] =  { 0.0, 0.0, 0.0 } )
 	SetEntProp(ent, Prop_Data, "m_nSolidType", 6); // SOLID_VPHYSICS
 	SetEntProp(ent, Prop_Send, "m_CollisionGroup", 1); //COLLISION_GROUP_DEBRIS
 
+	// basically it's not solid but the touch event is triggered
+	// if it was solid the player would lose speed because teleport works on next tick
+
 	g_iTeleporters[ent] = 1;
 	g_iCurrentTele[client] = ent;
 
@@ -2392,6 +2395,7 @@ public Handler_Teleport(Handle:menu, MenuAction:action, client, param2)
 									AcceptEntityInput(i, "Kill");
 								g_iTeleporters[i] = -1;
 								break;
+
 							}
 						}
 					}
