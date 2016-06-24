@@ -487,6 +487,13 @@ public Action:Command_BlockProperty(client, args)
 	if(!IsValidBlock(ent))
 		return;
 
+	float tmp[3];
+	GetEntPropVector(ent, Prop_Data, "m_vecMins", tmp);
+	PrintToChatAll("Mins: %.2f %.2f %.2f", tmp[0], tmp[1], tmp[2]);
+
+	GetEntPropVector(ent, Prop_Data, "m_vecMaxs", tmp);
+	PrintToChatAll("Maxs: %.2f %.2f %.2f", tmp[0], tmp[1], tmp[2]);
+
 	g_iClCurrentBlock[client] = ent;
 	ShowPropertyMenu(client);
 }
@@ -1072,118 +1079,9 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 			new bool:bSnap = false;
 			new bool:bGroup = g_bGroups[client][g_iDragEnt[client]];
 
-			if (g_bSnapping[client] && (FloatAbs(g_fClientAngles[client][1]) - FloatAbs(angles[1])) < 2.0 && !bGroup)
+			if (g_bSnapping[client]/* && (FloatAbs(g_fClientAngles[client][1]) - FloatAbs(angles[1])) < 2.0 && !bGroup*/)
 			{
-				for (new i = MaxClients + 1; i < 2048; ++i)
-				{
-					if (IsValidBlock(i) && i != g_iDragEnt[client])
-					{
-						GetEntPropVector(i, Prop_Send, "m_vecOrigin", fPos3);
-						if (GetVectorDistance(vecDir, fPos3) <= 60.0 + g_fSnappingGap[client])
-						{
-							bSnap = true;
-							new Float:d1, Float:d2, Float:d3, Float:d4, Float:d5, Float:d6;
-							if (g_fAngles[i][1] == 0.0 && g_fAngles[i][2] == 0.0)
-							{
-								fPos3[0] += 64.0;
-								d1 = GetVectorDistance(vecDir, fPos3);
-								fPos3[0] -= 128.0;
-								d2 = GetVectorDistance(vecDir, fPos3);
-								fPos3[0] += 64.0;
-								fPos3[1] += 64.0;
-								d3 = GetVectorDistance(vecDir, fPos3);
-								fPos3[1] -= 128.0;
-								d4 = GetVectorDistance(vecDir, fPos3);
-								fPos3[1] += 64.0;
-								fPos3[2] += 8.0;
-								d5 = GetVectorDistance(vecDir, fPos3);
-								fPos3[2] -= 16.0;
-								d6 = GetVectorDistance(vecDir, fPos3);
-								fPos3[2] += 8.0;
-
-								vecDir = fPos3;
-								if (d1 < d2 && d1 < d3 && d1 < d4 && d1 < d5 && d1 < d6)
-									vecDir[0] += 63.95 + g_fSnappingGap[client];
-								else if (d2 < d1 && d2 < d3 && d2 < d4 && d2 < d5 && d2 < d6)
-									vecDir[0] -= 63.95 + g_fSnappingGap[client];
-								else if (d3 < d1 && d3 < d2 && d3 < d4 && d3 < d5 && d3 < d6)
-									vecDir[1] += 63.95 + g_fSnappingGap[client];
-								else if (d4 < d1 && d4 < d2 && d4 < d3 && d4 < d5 && d4 < d6)
-									vecDir[1] -= 63.95 + g_fSnappingGap[client];
-								else if (d5 < d1 && d5 < d2 && d5 < d3 && d5 < d4 && d5 < d6)
-									vecDir[2] += 8.0 + g_fSnappingGap[client];
-								else if (d6 < d1 && d6 < d2 && d6 < d3 && d6 < d4 && d6 < d5)
-									vecDir[2] -= 8.0 + g_fSnappingGap[client];
-							} else if (g_fAngles[i][1] == 0.0 && g_fAngles[i][2] == 90.0)
-							{
-								fPos3[0] += 64.0;
-								d1 = GetVectorDistance(vecDir, fPos3);
-								fPos3[0] -= 128.0;
-								d2 = GetVectorDistance(vecDir, fPos3);
-								fPos3[0] += 64.0;
-								fPos3[1] += 8.0;
-								d3 = GetVectorDistance(vecDir, fPos3);
-								fPos3[1] -= 16.0;
-								d4 = GetVectorDistance(vecDir, fPos3);
-								fPos3[1] += 8.0;
-								fPos3[2] += 64.0;
-								d5 = GetVectorDistance(vecDir, fPos3);
-								fPos3[2] -= 128.0;
-								d6 = GetVectorDistance(vecDir, fPos3);
-								fPos3[2] += 64.0;
-
-								vecDir = fPos3;
-								if (d1 < d2 && d1 < d3 && d1 < d4 && d1 < d5 && d1 < d6)
-									vecDir[0] += 63.9 + g_fSnappingGap[client];
-								else if (d2 < d1 && d2 < d3 && d2 < d4 && d2 < d5 && d2 < d6)
-									vecDir[0] -= 63.9 + g_fSnappingGap[client];
-								else if (d3 < d1 && d3 < d2 && d3 < d4 && d3 < d5 && d3 < d6)
-									vecDir[1] += 8.0 + g_fSnappingGap[client];
-								else if (d4 < d1 && d4 < d2 && d4 < d3 && d4 < d5 && d4 < d6)
-									vecDir[1] -= 8.0 + g_fSnappingGap[client];
-								else if (d5 < d1 && d5 < d2 && d5 < d3 && d5 < d4 && d5 < d6)
-									vecDir[2] += 63.9 + g_fSnappingGap[client];
-								else if (d6 < d1 && d6 < d2 && d6 < d3 && d6 < d4 && d6 < d5)
-									vecDir[2] -= 63.9 + g_fSnappingGap[client];
-							}
-							else
-							{
-								fPos3[0] += 8.0;
-								d1 = GetVectorDistance(vecDir, fPos3);
-								fPos3[0] -= 16.0;
-								d2 = GetVectorDistance(vecDir, fPos3);
-								fPos3[0] += 8.0;
-								fPos3[1] += 64.0;
-								d3 = GetVectorDistance(vecDir, fPos3);
-								fPos3[1] -= 128.0;
-								d4 = GetVectorDistance(vecDir, fPos3);
-								fPos3[1] += 64.0;
-								fPos3[2] += 64.0;
-								d5 = GetVectorDistance(vecDir, fPos3);
-								fPos3[2] -= 128.0;
-								d6 = GetVectorDistance(vecDir, fPos3);
-								fPos3[2] += 64.0;
-
-								vecDir = fPos3;
-								if (d1 < d2 && d1 < d3 && d1 < d4 && d1 < d5 && d1 < d6)
-									vecDir[0] += 8.0 + g_fSnappingGap[client];
-								else if (d2 < d1 && d2 < d3 && d2 < d4 && d2 < d5 && d2 < d6)
-									vecDir[0] -= 8.0 + g_fSnappingGap[client];
-								else if (d3 < d1 && d3 < d2 && d3 < d4 && d3 < d5 && d3 < d6)
-									vecDir[1] += 64.0 + g_fSnappingGap[client];
-								else if (d4 < d1 && d4 < d2 && d4 < d3 && d4 < d5 && d4 < d6)
-									vecDir[1] -= 64.0 + g_fSnappingGap[client];
-								else if (d5 < d1 && d5 < d2 && d5 < d3 && d5 < d4 && d5 < d6)
-									vecDir[2] += 64.0 + g_fSnappingGap[client];
-								else if (d6 < d1 && d6 < d2 && d6 < d3 && d6 < d4 && d6 < d5)
-									vecDir[2] -= 64.0 + g_fSnappingGap[client];
-							}
-
-							g_fAngles[g_iDragEnt[client]] = g_fAngles[i];
-							break;
-						}
-					}
-				}
+				doSnapping(client, g_iDragEnt[client]);
 			}
 
 			if (!bSnap)
@@ -1193,6 +1091,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 
 				//TeleportEntity(g_iDragEnt[client], NULL_VECTOR, g_fAngles[g_iDragEnt[client]], vecVel);
 				TeleportEntity(g_iDragEnt[client], vecPos, NULL_VECTOR, NULL_VECTOR);
+				doSnapping(client, g_iDragEnt[client]);
 				if (bGroup)
 				{
 					new Float:playerPos[3];
@@ -2815,4 +2714,104 @@ public bool:TraceRayDontHitPlayerAndWorld(entityhit, mask) {
 }
 public bool:TraceRayHitOnlyEnt(entityhit, mask, any:data) {
 	return entityhit==data;
+}
+
+doSnapping(id, ent){
+	float fMoveTo[3];
+
+	float fSizeMin[3], fSizeMax[3];
+	GetEntPropVector(ent, Prop_Data, "m_vecMins", fSizeMin);
+	GetEntPropVector(ent, Prop_Data, "m_vecMaxs", fSizeMax);
+
+	GetEntPropVector(ent, Prop_Data, "m_vecOrigin", fMoveTo);
+	#pragma unused id
+
+	new Float:vReturn[3];
+	new Float:dist;
+	new Float:distOld = 9999.9;
+	new Float:vTraceStart[3];
+	new Float:vTraceEnd[3];
+
+	new trClosest = 0;
+	new blockFace;
+
+	/*for(new x = 0 ; x < 3 ; x++){
+		fSizeMin[x] = g_iRotation[ent] == 2 ? g_fBlockSizes3[g_iBlockSize[ent]][0][x] : g_iRotation[ent] == 1 ? g_fBlockSizes2[g_iBlockSize[ent]][0][x] : g_fBlockSizes[g_iBlockSize[ent]][0][x];
+		fSizeMax[x] = g_iRotation[ent] == 2 ? g_fBlockSizes3[g_iBlockSize[ent]][1][x] : g_iRotation[ent] == 1 ? g_fBlockSizes2[g_iBlockSize[ent]][1][x] : g_fBlockSizes[g_iBlockSize[ent]][1][x];
+	}*/
+	new Float:fVec[3];
+	for (new i = 0; i < 6; ++i){
+		vTraceStart = fMoveTo;
+
+		switch (i)
+		{
+			case 0: vTraceStart[0] += fSizeMin[0];		//edge of block on -X
+			case 1: vTraceStart[0] += fSizeMax[0];		//edge of block on +X
+			case 2: vTraceStart[1] += fSizeMin[1];		//edge of block on -Y
+			case 3: vTraceStart[1] += fSizeMax[1];		//edge of block on +Y
+			case 4: vTraceStart[2] += fSizeMin[2];		//edge of block on -Z
+			case 5: vTraceStart[2] += fSizeMax[2];		//edge of block on +Z
+		}
+
+		vTraceEnd = vTraceStart;
+
+		new Handle:tr = TR_TraceRayFilterEx(vTraceStart, vTraceEnd, MASK_SHOT, RayType_EndPoint, TraceRayNoPlayers, ent);
+
+		if(TR_DidHit(tr)){
+			new tr2 = TR_GetEntityIndex(tr);
+
+			TR_GetEndPosition(vReturn, tr);
+			if(IsValidBlock(tr2)){
+				dist = GetVectorDistance(vTraceStart, vReturn); //this!!
+
+				if (dist < distOld){
+					trClosest = tr2;
+					distOld = dist;
+
+					GetEntPropVector(trClosest, Prop_Data, "m_vecOrigin", fVec);
+					fVec[i/2] += (i == 0 || i%2 == 0) ? fSizeMax[i/2] : fSizeMin[i/2];
+					blockFace = i;
+				}
+			}
+		}
+
+		CloseHandle(tr);
+	}
+
+	if(IsValidBlock(trClosest)){
+
+		new Float:vOrigin[3];
+		GetEntPropVector(trClosest, Prop_Data, "m_vecOrigin", vOrigin);
+
+		new Float:fTrSizeMin[3];
+		new Float:fTrSizeMax[3];
+
+		GetEntPropVector(ent, Prop_Data, "m_vecMins", fTrSizeMin);
+		GetEntPropVector(ent, Prop_Data, "m_vecMaxs", fTrSizeMax);
+
+		/*for(new x = 0 ; x < 3 ; x++){
+			fTrSizeMin[x] = g_iRotation[trClosest] == 2 ? g_fBlockSizes3[g_iBlockSize[trClosest]][0][x] : g_iRotation[trClosest] == 1 ? g_fBlockSizes2[g_iBlockSize[trClosest]][0][x] : g_fBlockSizes[g_iBlockSize[trClosest]][0][x];
+			fTrSizeMax[x] = g_iRotation[trClosest] == 2 ? g_fBlockSizes3[g_iBlockSize[trClosest]][1][x] : g_iRotation[trClosest] == 1 ? g_fBlockSizes2[g_iBlockSize[trClosest]][1][x] : g_fBlockSizes[g_iBlockSize[trClosest]][1][x];
+		}*/
+
+		fMoveTo = vOrigin;
+
+		if (blockFace == 0) fMoveTo[0] += (fTrSizeMax[0] + fSizeMax[0]) - 0.5;
+		if (blockFace == 1) fMoveTo[0] += (fTrSizeMin[0] + fSizeMin[0]) + 0.5
+		if (blockFace == 2) fMoveTo[1] += (fTrSizeMax[1] + fSizeMax[1]) - 0.5;
+		if (blockFace == 3) fMoveTo[1] += (fTrSizeMin[1] + fSizeMin[1]) + 0.5;
+		if (blockFace == 4) fMoveTo[2] += (fTrSizeMax[2] + fSizeMax[2]) - 0.5;
+		if (blockFace == 5) fMoveTo[2] += (fTrSizeMin[2] + fSizeMin[2]) + 0.5;
+	}
+
+	TeleportEntity(ent, fMoveTo, NULL_VECTOR, NULL_VECTOR);
+}
+
+public bool:TraceRayNoPlayers(entity, mask, any:data)
+{
+    if(entity == data || (entity >= 1 && entity <= MaxClients))
+    {
+        return false;
+    }
+    return true;
 }
