@@ -10,7 +10,7 @@
 #include <sdkhooks>
 #include <smlib>
 #include <cstrike>
-#include <mm>
+//#include <mm>
 
 #define CHAT_TAG "[TeamMates]"
 #define PREFIX "\x03[TeamMates]\x04 "
@@ -296,6 +296,27 @@ new Handle:g_hTeleSound = INVALID_HANDLE;
 
 new RoundIndex = 0; // Quite lazy way yet effective one
 
+static const Float:g_fBlockSizes[4][2][3] = {
+	{{-32.25, -32.22, -4.21}, {32.25, 32.22, 4.21}},
+	{{-4.25, -32.25, -4.25}, {4.25, 32.25, 4.25}},
+	{{-15.97, -16.00, -3.97}, {15.97, 16.00, 3.97}},
+	{{-64.25, -64.18, -4.21}, {64.25, 64.18, 4.21}}
+};
+
+static const Float:g_fBlockSizes2[4][2][3] = {
+	{{-32.25, -4.21, -32.22}, {32.25, 4.21, 32.22}},
+	{{-32.25, -4.25, -4.25}, {32.25, 4.25, 4.25}},
+	{{-15.97, -3.97, -16.00}, {15.97, 3.97, 16.00}},
+	{{-64.25, -4.21, -64.18}, {64.25, 4.21, 64.18}}
+};
+
+static const Float:g_fBlockSizes3[4][2][3] = {
+	{{-4.21, -32.25, -32.22}, {4.21, 32.25, 32.22}},
+	{{-4.25, -4.25, -32.25}, {4.25, 4.25, 32.25}},
+	{{-3.97, -15.97, -16.00}, {3.97, 15.97, 16.00}},
+	{{-4.21, -64.25, -64.18}, {4.21, 64.25, 64.18}}
+};
+
 #include "bm/bm_propmenu"
 #include "bm/bm_readonlyproppanel"
 
@@ -486,13 +507,6 @@ public Action:Command_BlockProperty(client, args)
 
 	if(!IsValidBlock(ent))
 		return;
-
-	float tmp[3];
-	GetEntPropVector(ent, Prop_Data, "m_vecMins", tmp);
-	PrintToChatAll("Mins: %.2f %.2f %.2f", tmp[0], tmp[1], tmp[2]);
-
-	GetEntPropVector(ent, Prop_Data, "m_vecMaxs", tmp);
-	PrintToChatAll("Maxs: %.2f %.2f %.2f", tmp[0], tmp[1], tmp[2]);
 
 	g_iClCurrentBlock[client] = ent;
 	ShowPropertyMenu(client);
@@ -1215,15 +1229,20 @@ public Handler_BlockBuilder(Handle:menu, MenuAction:action, client, param2)
 				GetEntPropVector(ent, Prop_Data, "m_angRotation", vAng);
 
 				if(g_iBlocksSize[ent] == _:BLOCK_POLE) {
-					if (vAng[1])
+					if(!vAng[0] && !vAng[1] && !vAng[2])
 					{
+						vAng[1] = 90.0;
+					}
+					else if(!vAng[0] && vAng[1] == 90.0 && !vAng[2])
+					{
+						vAng[2] = 90.0;
+					}
+					else
+					{
+						vAng[0] = 0.0;
 						vAng[1] = 0.0;
 						vAng[2] = 0.0;
 					}
-					else if (vAng[0])
-						vAng[1] = 90.0;
-					else
-						vAng[0] = 90.0;
 				}
 				else {
 
@@ -1744,7 +1763,7 @@ public Action:OnStartTouch(block, client)
 				if(g_PlayerEffects[client][Stealth][canUse])
 				{
 					SetEntityRenderMode(client, RENDER_NONE);
-					SetPlayerEffect(client, Stealth, g_fPropertyValue[block][0] + float(mm_GetStealthTime(client)),
+					SetPlayerEffect(client, Stealth, g_fPropertyValue[block][0]/* + float(mm_GetStealthTime(client))*/,
 						g_fPropertyValue[block][1], STEALTH_end, STEALTH_cdEnd);
 
 					EmitSoundToAll(REL_STEALTH_SOUND_PATH, block, SNDCHAN_AUTO);
@@ -1759,7 +1778,7 @@ public Action:OnStartTouch(block, client)
 					SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
 					SetEntityRenderColor(client, 230, 230, 40, 255);
 
-					SetPlayerEffect(client, Invincibility, g_fPropertyValue[block][0] + float(mm_GetInvincibilityTime(client)),
+					SetPlayerEffect(client, Invincibility, g_fPropertyValue[block][0]/* + float(mm_GetInvincibilityTime(client))*/,
 						g_fPropertyValue[block][1], INVINCIBLITY_end, INVINCIBLITY_cdEnd);
 
 					EmitSoundToAll(REL_INVI_SOUND_PATH, block, SNDCHAN_AUTO);
@@ -1771,7 +1790,7 @@ public Action:OnStartTouch(block, client)
 				{
 					SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", g_fPropertyValue[block][2] / 250.0);
 
-					SetPlayerEffect(client, BootsOfSpeed, g_fPropertyValue[block][0] + float(mm_GetBootsTime(client)),
+					SetPlayerEffect(client, BootsOfSpeed, g_fPropertyValue[block][0]/* + float(mm_GetBootsTime(client))*/,
 						g_fPropertyValue[block][1], BOOTS_OF_SPEED_end, BOOTS_OF_SPEED_cdEnd);
 
 					EmitSoundToAll(REL_BOS_SOUND_PATH, block, SNDCHAN_AUTO);
@@ -1781,7 +1800,7 @@ public Action:OnStartTouch(block, client)
 
 				if(g_bCanUseMoney[client] && GetClientTeam(client) == CS_TEAM_T)
 				{
-					int money = mm_AddMoney(client, RoundFloat(g_fPropertyValue[block][0]), 1.5);
+					int money = /*mm_AddMoney(client, RoundFloat(g_fPropertyValue[block][0]), 1.5)*/50;
 					PrintToChat(client, "%s\x03 You have received\x04 $%i\03 from the moneyblock!",
 						CHAT_TAG, money);
 
@@ -2720,8 +2739,8 @@ doSnapping(id, ent){
 	float fMoveTo[3];
 
 	float fSizeMin[3], fSizeMax[3];
-	GetEntPropVector(ent, Prop_Data, "m_vecMins", fSizeMin);
-	GetEntPropVector(ent, Prop_Data, "m_vecMaxs", fSizeMax);
+	/*GetEntPropVector(ent, Prop_Data, "m_vecMins", fSizeMin);
+	GetEntPropVector(ent, Prop_Data, "m_vecMaxs", fSizeMax);*/
 
 	GetEntPropVector(ent, Prop_Data, "m_vecOrigin", fMoveTo);
 	#pragma unused id
@@ -2735,10 +2754,17 @@ doSnapping(id, ent){
 	new trClosest = 0;
 	new blockFace;
 
-	/*for(new x = 0 ; x < 3 ; x++){
-		fSizeMin[x] = g_iRotation[ent] == 2 ? g_fBlockSizes3[g_iBlockSize[ent]][0][x] : g_iRotation[ent] == 1 ? g_fBlockSizes2[g_iBlockSize[ent]][0][x] : g_fBlockSizes[g_iBlockSize[ent]][0][x];
-		fSizeMax[x] = g_iRotation[ent] == 2 ? g_fBlockSizes3[g_iBlockSize[ent]][1][x] : g_iRotation[ent] == 1 ? g_fBlockSizes2[g_iBlockSize[ent]][1][x] : g_fBlockSizes[g_iBlockSize[ent]][1][x];
-	}*/
+	float ang[3];
+	GetEntPropVector(ent, Prop_Data, "m_angRotation", ang);
+
+	int size = g_iBlocksSize[ent];
+	int rotation = getRotation(size, ang);
+
+
+	for(new x = 0 ; x < 3 ; x++){
+		fSizeMin[x] = rotation == 2 ? g_fBlockSizes3[size][0][x] : rotation == 1 ? g_fBlockSizes2[size][0][x] : g_fBlockSizes[size][0][x];
+		fSizeMax[x] = rotation == 2 ? g_fBlockSizes3[size][1][x] : rotation == 1 ? g_fBlockSizes2[size][1][x] : g_fBlockSizes[size][1][x];
+	}
 	new Float:fVec[3];
 	for (new i = 0; i < 6; ++i){
 		vTraceStart = fMoveTo;
@@ -2786,13 +2812,18 @@ doSnapping(id, ent){
 		new Float:fTrSizeMin[3];
 		new Float:fTrSizeMax[3];
 
-		GetEntPropVector(ent, Prop_Data, "m_vecMins", fTrSizeMin);
-		GetEntPropVector(ent, Prop_Data, "m_vecMaxs", fTrSizeMax);
+		GetEntPropVector(trClosest, Prop_Data, "m_angRotation", ang);
 
-		/*for(new x = 0 ; x < 3 ; x++){
-			fTrSizeMin[x] = g_iRotation[trClosest] == 2 ? g_fBlockSizes3[g_iBlockSize[trClosest]][0][x] : g_iRotation[trClosest] == 1 ? g_fBlockSizes2[g_iBlockSize[trClosest]][0][x] : g_fBlockSizes[g_iBlockSize[trClosest]][0][x];
-			fTrSizeMax[x] = g_iRotation[trClosest] == 2 ? g_fBlockSizes3[g_iBlockSize[trClosest]][1][x] : g_iRotation[trClosest] == 1 ? g_fBlockSizes2[g_iBlockSize[trClosest]][1][x] : g_fBlockSizes[g_iBlockSize[trClosest]][1][x];
-		}*/
+		size = g_iBlocksSize[trClosest];
+		rotation = getRotation(size, ang);
+
+		/*GetEntPropVector(ent, Prop_Data, "m_vecMins", fTrSizeMin);
+		GetEntPropVector(ent, Prop_Data, "m_vecMaxs", fTrSizeMax);*/
+
+		for(new x = 0 ; x < 3 ; x++){
+			fTrSizeMin[x] = rotation == 2 ? g_fBlockSizes3[size][0][x] : rotation == 1 ? g_fBlockSizes2[size][0][x] : g_fBlockSizes[size][0][x];
+			fTrSizeMax[x] = rotation == 2 ? g_fBlockSizes3[size][1][x] : rotation == 1 ? g_fBlockSizes2[size][1][x] : g_fBlockSizes[size][1][x];
+		}
 
 		fMoveTo = vOrigin;
 
@@ -2814,4 +2845,36 @@ public bool:TraceRayNoPlayers(entity, mask, any:data)
         return false;
     }
     return true;
+}
+
+// it will convert the angles to a number that can be used with the mins/maxs array
+// to avoid storing rotation in the save file (backwards comp)
+int getRotation(blockType, float vAng[3])
+{
+	if(blockType == _:BLOCK_POLE)
+	{
+		if(!vAng[0] && !vAng[1] && !vAng[2])
+		{
+			return 0;
+		}
+		else if(!vAng[0] && vAng[1] == 90.0 && !vAng[2])
+		{
+			return 1;
+		}
+		else
+		{
+			return 2;
+		}
+	}
+	else
+	{
+		if (vAng[1])
+		{
+			return 2;
+		}
+		else if (vAng[2])
+			return 1;
+		else
+			return 0;
+	}
 }
