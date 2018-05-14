@@ -1768,6 +1768,9 @@ public Action:OnStartTouch(block, client)
 				SetEntityGravity(client, g_fPropertyValue[block][0]);
 				//SDKHook(client, SDKHook_GroundEntChangedPost, Gravity_GroundEntChanged);
 			}
+			case HONEY: {
+				SDKHook(client, SDKHook_PostThink, Honey_OnPostThink);
+			}
 			case STEALTH: {
 				if(g_PlayerEffects[client][Stealth][canUse])
 				{
@@ -1874,18 +1877,6 @@ public Action Honey_GroundEntChanged(client)
 		SDKUnhook(client, SDKHook_GroundEntChangedPost, Honey_GroundEntChanged);
 		SDKUnhook(client, SDKHook_PostThink, Honey_OnPostThink);
 	}
-
-	float vel[3];
-	GetEntPropVector(client, Prop_Data, "m_vecVelocity", vel);
-	float speed = GetAbsVec(vel);
-
-	if(speed < 3000.0)
-	{
-		vel[0] *= 3000.0 / speed;
-		vel[1] *= 3000.0 / speed;
-		TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, vel);
-	}
-
 }
 
 float GetAbsVec(const float[] a)
@@ -1985,10 +1976,6 @@ public Action:OnTouch(block, client)
 	}
 
 	switch(g_iBlocks[block]) {
-		case HONEY: {
-			//SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 0.4);
-			SDKHook(client, SDKHook_PostThink, Honey_OnPostThink);
-		}
 		case ICE: {
 			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.15);
 		}
