@@ -280,7 +280,7 @@ bool g_bGhost[MAXPLAYERS + 1];
 bool g_bCanUseMoney[MAXPLAYERS + 1] = {true, ...};
 
 new Handle:Block_Timers[64] = {INVALID_HANDLE, ...};
-new Block_Touching[MAXPLAYERS + 1] = 0;
+bool Block_Touching[MAXPLAYERS + 1][2048];
 
 
 new Float:g_fSnappingGap[MAXPLAYERS + 1] =  { 0.0, ... };
@@ -672,7 +672,8 @@ public Action:RoundStart(Handle:event, const String:name[], bool:dontBroadcast)
 		g_bDeagleCanUse[i] = true;
 		g_bCanUseMoney[i] = true;
 
-		Block_Touching[i] = 0;
+		for(int j = 0; j < 2048; j++)
+			Block_Touching[i][j] = false;
 	}
 	RoundIndex++
 	LoadBlocks();
@@ -1696,6 +1697,8 @@ public Action:OnStartTouch(block, client)
 		return Plugin_Handled;
 	}
 
+	Block_Touching[client][block] = true;
+
 	/* The block can be activated from top only
 		but the player isn't on ground */
 	if(g_bTopOnly[block] == 1
@@ -1990,9 +1993,6 @@ public Action:OnTouch(block, client)
 		}
 	}
 
-	if(g_iBlocks[block] != _:DEATH)
-		Block_Touching[client] = g_iBlocks[block]
-
 	return Plugin_Continue;
 }
 
@@ -2045,14 +2045,14 @@ public Action:OnEndTouch(block, client)
 		}
 	}
 
-	CreateTimer(0.01, BlockTouch_End, client);
+	Block_Touching[client][block] = false;
 
 	return Plugin_Continue;
 }
 
 public Action:BlockTouch_End(Handle:timer, any:client)
 {
-	Block_Touching[client] = 0;
+	//Block_Touching[client] = 0;
 }
 
 public Action:DamagePlayer(Handle:timer, any:pack)
@@ -2063,7 +2063,7 @@ public Action:DamagePlayer(Handle:timer, any:pack)
 
 	if(!IsClientInGame(client)
 	|| !IsPlayerAlive(client)
-	|| Block_Touching[client] != _:DAMAGE) {
+	|| Block_Touching[client][block] == false) {
 		ClearTimer(Block_Timers[client]);
 		CloseHandle(pack);
 		return Plugin_Handled;
@@ -2169,7 +2169,7 @@ public Action:HealPlayer(Handle:timer, any:pack)
 
 	if(!IsClientInGame(client)
 	|| !IsPlayerAlive(client)
-	|| Block_Touching[client] != _:HEALTH) {
+	|| Block_Touching[client][block] == false) {
 		ClearTimer(Block_Timers[client]);
 		CloseHandle(pack);
 		return Plugin_Handled;
