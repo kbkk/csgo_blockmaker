@@ -91,7 +91,7 @@ new const String:g_sPropertyName[_:BlockTypes][MAXPROPERTIES][64] =
 	{"Kills with godmode", "", ""},
 	{"Gravity ratio", "", ""},
 	{"Trigger delay", "Cooldown", ""},
-	{"", "", ""},
+	{"Trigger delay", "Cooldown", ""},
 	{"Time", "Cooldown", "Speed"},
 	{"", "", ""},
 	{"Trigger delay", "Cooldown", ""},
@@ -120,7 +120,7 @@ new const Float:g_fPropertyDefault[_:BlockTypes][MAXPROPERTIES] = {
 	{0.0, 0.0, 0.0},
 	{0.75, 0.0, 0.0},
 	{0.0, 1.0, 0.0},
-	{0.0, 0.0, 0.0},
+	{0.0, 1.0, 0.0},
 	{10.0, 60.0, 320.0},
 	{0.0, 0.0, 0.0},
 	{0.0, 0.0, 0.0},
@@ -1748,6 +1748,15 @@ public Action:OnStartTouch(block, client)
 			}
 			case BARRIER_CT: {
 				if(GetClientTeam(client) == 2) {
+					g_bTriggered[block] = true;
+					if(g_fPropertyValue[block][0] < 0.05)
+						StartNoBlock(block);
+					else
+						CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
+				}
+			}
+			case BARRIER_T: {
+				if(GetClientTeam(client) == 3) {
 					g_bTriggered[block] = true;
 					if(g_fPropertyValue[block][0] < 0.05)
 						StartNoBlock(block);
