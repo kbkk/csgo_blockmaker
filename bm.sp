@@ -1864,6 +1864,50 @@ public Action Gravity_GroundEntChanged(client)
 	SetEntityGravity(client, 1.0);
 }
 
+public Action Honey_GroundEntChanged(client)
+{
+	int ground = GetEntPropEnt(client, Prop_Send, "m_hGroundEntity");
+
+	// -1 ground
+	// 0 air
+	if(ground != 0) {
+		SDKUnhook(client, SDKHook_GroundEntChangedPost, Honey_GroundEntChanged);
+		SDKUnhook(client, SDKHook_PostThink, Honey_OnPostThink);
+	}
+
+	float vel[3];
+	GetEntPropVector(client, Prop_Data, "m_vecVelocity", vel);
+	float speed = GetAbsVec(vel);
+
+	if(speed < 3000.0)
+	{
+		vel[0] *= 3000.0 / speed;
+		vel[1] *= 3000.0 / speed;
+		TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, vel);
+	}
+
+}
+
+float GetAbsVec(const float[] a)
+{
+    return SquareRoot(a[0] * a[0] + a[1] * a[1]);
+}
+
+public Honey_OnPostThink(client)
+{
+	static float speedcap = 40.0;
+	float vel[3];
+	GetEntPropVector(client, Prop_Data, "m_vecVelocity", vel);
+	float speed = GetAbsVec(vel);
+
+	if(speed > speedcap)
+	{
+		vel[0] *= speedcap / speed;
+		vel[1] *= speedcap / speed;
+		TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, vel);
+	}
+}
+
 public Action:Stealth_SetTransmit(entity, clients)
 {
 	if (entity == clients)
@@ -1942,7 +1986,8 @@ public Action:OnTouch(block, client)
 
 	switch(g_iBlocks[block]) {
 		case HONEY: {
-			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 0.4);
+			//SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 0.4);
+			SDKHook(client, SDKHook_PostThink, Honey_OnPostThink);
 		}
 		case ICE: {
 			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.15);
@@ -2002,6 +2047,7 @@ public Action:OnEndTouch(block, client)
 	switch(g_iBlocks[block]) {
 		case HONEY: {
 			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.0);
+			SDKHook(client, SDKHook_GroundEntChangedPost, Honey_GroundEntChanged);
 		}
 		case ICE: {
 			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.0);
