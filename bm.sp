@@ -2034,6 +2034,7 @@ public Action:OnEndTouch(block, client)
 	switch(g_iBlocks[block]) {
 		case HONEY: {
 			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.0);
+			Honey_GroundEntChanged(client);
 			SDKHook(client, SDKHook_GroundEntChangedPost, Honey_GroundEntChanged);
 		}
 		case ICE: {
