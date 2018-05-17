@@ -1900,6 +1900,12 @@ public Honey_OnPostThink(client)
 		vel[1] *= speedcap / speed;
 		TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, vel);
 	}
+
+	int ground = GetEntPropEnt(client, Prop_Send, "m_hGroundEntity");
+	
+	if(ground == 0) {
+		SDKUnhook(client, SDKHook_PostThink, Honey_OnPostThink);
+	}
 }
 
 public Action:Stealth_SetTransmit(entity, clients)
