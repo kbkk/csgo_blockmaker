@@ -144,7 +144,7 @@
 		"effect"	"0.1"
 	}
 
-	"NoFallDmg" // 17
+	"Money" // 17
 	{
 		"model_pathprefix"	"models/arclhns"
 		"model_name"		"platform.mdl"

@@ -166,7 +166,8 @@ new const g_bTopOnlyDefault[_:BlockTypes] =
 	0
 };
 
-new g_bTopOnly[2048],  Float:g_fPropertyValue[2048][MAXPROPERTIES];
+bool g_bTopOnly[2048];
+float g_fPropertyValue[2048][MAXPROPERTIES];
 
 enum BlockConfig
 {
@@ -236,7 +237,7 @@ new const String:FULL_MONEY_SOUND_PATH[] = "sound/teammates/money.mp3";
 new const String:REL_MONEY_SOUND_PATH[] = "*teammates/money.mp3";
 
 
-new bool:g_bTouchStartTriggered[MAXPLAYERS + 1];
+bool g_bTouchStartTriggered[MAXPLAYERS + 1];
 
 new g_iClCurrentBlock[MAXPLAYERS + 1]; // current block client is inputting property for
 new g_iClInputting[MAXPLAYERS + 1] = {-1, ...}; //client is inputting a property (number)
@@ -246,31 +247,29 @@ new g_iClBlockSize[MAXPLAYERS + 1]; // client's selected block size
 new g_iDragEnt[MAXPLAYERS + 1];
 new g_iLastDragEnt[MAXPLAYERS + 1];
 
-new g_iBlockSelection[MAXPLAYERS + 1] =  { 0, ... };
-new g_iBlocks[2048] =  { -1, ... };
-new g_iBlocksSize[2048] =  { -1, ... };
-new g_iTeleporters[2048] =  { -1, ... };
-// new g_iClientBlocks[MAXPLAYERS+1] = {-1, ...};
-new g_iAmmo;
-new g_iPrimaryAmmoType;
+int g_iBlockSelection[MAXPLAYERS + 1] =  { 0, ... };
+int g_iBlocks[2048] =  { -1, ... };
+int g_iBlocksSize[2048] =  { -1, ... };
+int g_iTeleporters[2048] =  { -1, ... };
+
 new g_iCurrentTele[MAXPLAYERS + 1] =  { -1, ... };
 new g_iBeamSprite = 0;
 new CurrentModifier[MAXPLAYERS + 1] = 0
-//new Float:velocity_duck = 0.0
+
 new Block_Transparency[2048] = 0
 new Float:g_fGrabOffset[MAXPLAYERS + 1];
 
-new bool:g_bNoFallDmg[MAXPLAYERS + 1] =  { false, ... };
-new bool:g_bLocked[MAXPLAYERS + 1] =  { false, ... };
-new bool:g_bTriggered[2048] =  { false, ... };
-new bool:g_bCamCanUse[MAXPLAYERS + 1] =  { true, ... };
-new bool:g_bDeagleCanUse[MAXPLAYERS + 1] =  { true, ... };
-new bool:g_bAwpCanUse[MAXPLAYERS + 1] =  { true, ... };
-new bool:g_bHEgrenadeCanUse[MAXPLAYERS + 1] =  { true, ... };
-new bool:g_bFlashbangCanUse[MAXPLAYERS + 1] =  { true, ... };
-new bool:g_bSmokegrenadeCanUse[MAXPLAYERS + 1] =  { true, ... };
-new bool:g_bSnapping[MAXPLAYERS + 1] =  { false, ... };
-new bool:g_bGroups[MAXPLAYERS + 1][2048];
+bool g_bNoFallDmg[MAXPLAYERS + 1] =  { false, ... };
+bool g_bLocked[MAXPLAYERS + 1] =  { false, ... };
+bool g_bTriggered[2048] =  { false, ... };
+bool g_bCamCanUse[MAXPLAYERS + 1] =  { true, ... };
+bool g_bDeagleCanUse[MAXPLAYERS + 1] =  { true, ... };
+bool g_bAwpCanUse[MAXPLAYERS + 1] =  { true, ... };
+bool g_bHEgrenadeCanUse[MAXPLAYERS + 1] =  { true, ... };
+bool g_bFlashbangCanUse[MAXPLAYERS + 1] =  { true, ... };
+bool g_bSmokegrenadeCanUse[MAXPLAYERS + 1] =  { true, ... };
+bool g_bSnapping[MAXPLAYERS + 1] =  { false, ... };
+bool g_bGroups[MAXPLAYERS + 1][2048];
 
 
 //GHOST
@@ -279,20 +278,20 @@ bool g_bGhost[MAXPLAYERS + 1];
 
 bool g_bCanUseMoney[MAXPLAYERS + 1] = {true, ...};
 
-new Handle:Block_Timers[64] = {INVALID_HANDLE, ...};
+Handle Block_Timers[64] = {INVALID_HANDLE, ...};
 bool Block_Touching[MAXPLAYERS + 1][2048];
 
 
-new Float:g_fSnappingGap[MAXPLAYERS + 1] =  { 0.0, ... };
-new Float:g_fClientAngles[MAXPLAYERS + 1][3];
-new Float:g_fAngles[2048][3];
+float g_fSnappingGap[MAXPLAYERS + 1] =  { 0.0, ... };
+float g_fClientAngles[MAXPLAYERS + 1][3];
+float g_fAngles[2048][3];
 
 // Skriv antal blocks!
 new g_eBlocks[35][BlockConfig];
 
-new Handle:g_hClientMenu[MAXPLAYERS + 1];
-new Handle:g_hBlocksKV = INVALID_HANDLE;
-new Handle:g_hTeleSound = INVALID_HANDLE;
+Handle g_hClientMenu[MAXPLAYERS + 1];
+Handle g_hBlocksKV = INVALID_HANDLE;
+Handle g_hTeleSound = INVALID_HANDLE;
 
 new RoundIndex = 0; // Quite lazy way yet effective one
 
@@ -372,9 +371,6 @@ public OnPluginStart()
 	HookEvent("round_end", RoundEnd);
 
 	AutoExecConfig();
-
-	g_iAmmo = FindSendPropOffs("CCSPlayer", "m_iAmmo");
-	g_iPrimaryAmmoType = FindSendPropOffs("CBaseCombatWeapon", "m_iPrimaryAmmoType");
 
 	new String:file[256];
 	BuildPath(Path_SM, file, sizeof(file), "configs/blockbuilder.blocks.txt");
@@ -939,7 +935,7 @@ public Action:Command_SaveBlocks(client, args)
 	return Plugin_Handled;
 }
 
-SaveBlocks(bool:msg = false)
+SaveBlocks(bool msg = false)
 {
 	if (g_hBlocksKV != INVALID_HANDLE)
 		CloseHandle(g_hBlocksKV);
@@ -1007,13 +1003,13 @@ SaveBlocks(bool:msg = false)
 	PrintToServer("%d blocks and %d teleports saved", blocks, teleporters);
 }
 
-LoadBlocks(bool:msg = false)
+void LoadBlocks(bool msg = false)
 {
 	if (g_hBlocksKV == INVALID_HANDLE)
 		return;
 
-	new teleporters = 0, blocks = 0;
-	new Float:fPos[3], Float:fAng[3];
+	int teleporters = 0, blocks = 0;
+	float fPos[3], fAng[3];
 
 	KvRewind(g_hBlocksKV);
 	KvGotoFirstSubKey(g_hBlocksKV);
@@ -1038,7 +1034,7 @@ LoadBlocks(bool:msg = false)
 			if(blocktype >= _:BlockTypes)
 				continue;
 
-			new b = CreateBlock(0, blocktype, blocksize, fPos, fAng, 0.0, 0.0, transparency);
+			new b = CreateBlock(0, blocktype, blocksize, fPos, fAng, transparency);
 			blocks++;
 			/* The toponly property key doesn't exist.
 			 	CreateBlock loads default properties and
@@ -1047,7 +1043,7 @@ LoadBlocks(bool:msg = false)
 				continue;
 			}
 
-			g_bTopOnly[b] = KvGetNum(g_hBlocksKV, "toponly");
+			g_bTopOnly[b] = view_as<bool>(KvGetNum(g_hBlocksKV, "toponly"));
 
 			decl String:propnum[12];
 			for(new i = 0; i < MAXPROPERTIES; i++) {
@@ -1088,8 +1084,6 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 			vecPos[2] += (vecDir[2]) * g_fGrabOffset[client];
 
 			GetEntPropVector(g_iDragEnt[client], Prop_Send, "m_vecOrigin", vecDir);
-
-			new Float:fPos3[3];
 
 			new bool:bSnap = false;
 			new bool:bGroup = g_bGroups[client][g_iDragEnt[client]];
@@ -1374,7 +1368,7 @@ public Handler_BlockBuilder(Handle:menu, MenuAction:action, client, param2)
 
 public Command_BlockAlpha(client)
 {
-	new Handle:menu = CreateMenu(BB_ALPHA, MenuAction_Select | MenuAction_End);
+	Handle menu = CreateMenu(BB_ALPHA, MenuAction_Select | MenuAction_End);
 	SetMenuTitle(menu, "Block Transparency");
 	AddMenuItem(menu, "20", "20");
 	AddMenuItem(menu, "40", "40");
@@ -1394,13 +1388,13 @@ public Command_BlockAlpha(client)
 }
 
 
-public BB_ALPHA(Handle:menu, MenuAction:action, client, param2)
+public int BB_ALPHA(Menu menu, MenuAction action, int client, int param2)
 {
 	switch (action)
 	{
 		case MenuAction_Select:
 		{
-			decl String:item[16];
+			char item[16];
 			GetMenuItem(menu, param2, item, sizeof(item));
 			SetEntityRenderMode(CurrentModifier[client], RENDER_TRANSCOLOR)
 			SetEntityRenderColor(CurrentModifier[client], 255, 255, 255, StringToInt(item))
@@ -1410,14 +1404,14 @@ public BB_ALPHA(Handle:menu, MenuAction:action, client, param2)
 		}
 		case MenuAction_End:
 		{
-			CloseHandle(menu);
+			delete menu;
 		}
 	}
 }
 
-public Handle:CreateTeleportMenu(client)
+public Handle CreateTeleportMenu(client)
 {
-	new Handle:menu = CreateMenu(Handler_Teleport);
+	Handle menu = CreateMenu(Handler_Teleport);
 	SetMenuTitle(menu, "Teleport Menu");
 	if (g_iCurrentTele[client] == -1)
 		AddMenuItem(menu, "0", "Teleport Start");
@@ -1431,12 +1425,12 @@ public Handle:CreateTeleportMenu(client)
 	return menu;
 }
 
-public Handle:CreateBlocksMenu()
+public Handle CreateBlocksMenu()
 {
-	new Handle:menu = CreateMenu(Handler_Blocks);
-	decl String:szItem[4];
+	Handle menu = CreateMenu(Handler_Blocks);
+	char szItem[4];
 	SetMenuTitle(menu, "Block Menu");
-	for (new i; i < sizeof(g_eBlocks); i++)
+	for (int i; i < sizeof g_eBlocks; i++)
 	{
 		IntToString(i, szItem, sizeof(szItem));
 		AddMenuItem(menu, szItem, g_eBlocks[i][BlockName]);
@@ -1445,9 +1439,9 @@ public Handle:CreateBlocksMenu()
 	return menu;
 }
 
-public Handle:CreateMainMenu(client)
+public Handle CreateMainMenu(client)
 {
-	new Handle:menu = CreateMenu(Handler_BlockBuilder);
+	Handle menu = CreateMenu(Handler_BlockBuilder);
 
 	SetMenuTitle(menu, "blockbuilder Blockmaker");
 
@@ -1488,9 +1482,9 @@ public Handle:CreateMainMenu(client)
 	return menu;
 }
 
-public Handle:CreateOptionsMenu(client)
+public Handle CreateOptionsMenu(client)
 {
-	new Handle:menu = CreateMenu(Handler_Options);
+	Handle menu = CreateMenu(Handler_Options);
 	SetMenuTitle(menu, "Options Menu");
 
 	if (g_bSnapping[client])
@@ -1499,7 +1493,7 @@ public Handle:CreateOptionsMenu(client)
 		AddMenuItem(menu, "0", "Snapping: Off");
 
 
-	new String:sText[256];
+	char sText[256];
 	Format(sText, sizeof(sText), "Snapping gap: %.1f\n \n", g_fSnappingGap[client]);
 	AddMenuItem(menu, "1", sText);
 
@@ -1522,9 +1516,9 @@ public Handle:CreateOptionsMenu(client)
 	return menu;
 }
 
-CreateTeleportEntrance(client, Float:fPos[3] =  { 0.0, 0.0, 0.0 } )
+int CreateTeleportEntrance(int client, float fPos[3] =  { 0.0, 0.0, 0.0 } )
 {
-	new Float:vecDir[3], Float:vecPos[3], Float:viewang[3];
+	float vecDir[3], vecPos[3], viewang[3];
 	if (client > 0)
 	{
 		GetClientEyeAngles(client, viewang);
@@ -1539,7 +1533,7 @@ CreateTeleportEntrance(client, Float:fPos[3] =  { 0.0, 0.0, 0.0 } )
 		vecPos = fPos;
 	}
 
-	new ent = CreateEntityByName("prop_physics_override");
+	int ent = CreateEntityByName("prop_physics_override");
 	DispatchKeyValue(ent, "model", "models/platforms/b-tele.mdl");
 	TeleportEntity(ent, vecPos, NULL_VECTOR, NULL_VECTOR);
 	DispatchSpawn(ent);
@@ -1562,9 +1556,9 @@ CreateTeleportEntrance(client, Float:fPos[3] =  { 0.0, 0.0, 0.0 } )
 	return ent;
 }
 
-CreateTeleportExit(client, Float:fPos[3] =  { 0.0, 0.0, 0.0 } )
+int CreateTeleportExit(int client, float fPos[3] =  { 0.0, 0.0, 0.0 } )
 {
-	new Float:vecDir[3], Float:vecPos[3], Float:viewang[3];
+	float vecDir[3], vecPos[3], viewang[3];
 	if (client > 0)
 	{
 		GetClientEyeAngles(client, viewang);
@@ -1579,7 +1573,7 @@ CreateTeleportExit(client, Float:fPos[3] =  { 0.0, 0.0, 0.0 } )
 		vecPos = fPos;
 	}
 
-	new ent = CreateEntityByName("prop_physics_override");
+	int ent = CreateEntityByName("prop_physics_override");
 	DispatchKeyValue(ent, "model", "models/platforms/r-tele.mdl");
 	TeleportEntity(ent, vecPos, NULL_VECTOR, NULL_VECTOR);
 	DispatchSpawn(ent);
@@ -1596,8 +1590,8 @@ CreateTeleportExit(client, Float:fPos[3] =  { 0.0, 0.0, 0.0 } )
 	return ent;
 }
 
-CreateBlockAiming(client) {
-	new Float:vecPos[3], Float:vecDir[3], Float:viewang[3];
+int CreateBlockAiming(int client) {
+	float vecPos[3], vecDir[3], viewang[3];
 
 	GetClientEyeAngles(client, viewang);
 	GetAngleVectors(viewang, vecDir, NULL_VECTOR, NULL_VECTOR);
@@ -1606,17 +1600,18 @@ CreateBlockAiming(client) {
 	vecPos[1] += vecDir[1] * 100;
 	vecPos[2] += vecDir[2] * 100;
 
-	return CreateBlock(client, g_iBlockSelection[client], g_iClBlockSize[client], vecPos, _, _, _, _);
+	return CreateBlock(client, g_iBlockSelection[client], g_iClBlockSize[client], vecPos, _, _);
 }
 
-CreateBlock(client, blocktype = 0, blocksize = _:BLOCK_NORMAL, Float:fPos[3] =  { 0.0, 0.0, 0.0 }, Float:fAng[3] =  { 0.0, 0.0, 0.0 }, Float:attrib1 = 0.0, Float:attrib2 = 0.0, transparency = 0)
+int CreateBlock(int client, int blocktype = 0, int blocksize = _:BLOCK_NORMAL, float fPos[3] =  { 0.0, 0.0, 0.0 }, float fAng[3] =  { 0.0, 0.0, 0.0 }, int transparency = 0)
 {
-	new Float:vecPos[3];
+	#pragma unused client
+
+	float vecPos[3];
 	vecPos = fPos;
+	int block_entity = CreateEntityByName("prop_physics_override");
+	char sModel[256];
 
-	new block_entity = CreateEntityByName("prop_physics_override");
-
-	new String:sModel[256];
 	Format(sModel, sizeof(sModel), "%s_%s/%s", g_eBlocks[blocktype][ModelPathPrefix], BlockDirName[blocksize], g_eBlocks[blocktype][ModelName]);
 	DispatchKeyValue(block_entity, "model", sModel);
 
@@ -1636,14 +1631,12 @@ CreateBlock(client, blocktype = 0, blocksize = _:BLOCK_NORMAL, Float:fPos[3] =  
 	}
 
 	g_iBlocks[block_entity] = blocktype;
+	g_fAngles[block_entity] = fAng;
+	SetDefaultProperty(block_entity);
 
 	SDKHook(block_entity, SDKHook_StartTouch, OnStartTouch);
 	SDKHook(block_entity, SDKHook_Touch, OnTouch);
 	SDKHook(block_entity, SDKHook_EndTouch, OnEndTouch);
-
-	g_fAngles[block_entity] = fAng;
-
-	SetDefaultProperty(block_entity);
 
 	//PrintToChat(client, "%sSuccessfully spawned block \x03%s\x04.", CHAT_TAG, g_eBlocks[g_iBlockSelection[client]][BlockName]);
 	return block_entity;
@@ -1701,7 +1694,7 @@ public Action:OnStartTouch(block, client)
 
 	/* The block can be activated from top only
 		but the player isn't on ground */
-	if(g_bTopOnly[block] == 1
+	if(g_bTopOnly[block] == true
 		&& (!(GetEntityFlags(client) & FL_ONGROUND)
 		|| GetEntPropEnt(client, Prop_Send, "m_hGroundEntity") != block)) {
 
@@ -2712,7 +2705,7 @@ public Action SetAllDeathsKillWithGod(client, args)
 public SetDefaultProperty(block) {
 	new blocktype = g_iBlocks[block];
 
-	g_bTopOnly[block] = g_bTopOnlyDefault[blocktype];
+	g_bTopOnly[block] = view_as<bool>(g_bTopOnlyDefault[blocktype]);
 
 	for(new i = 0; i < MAXPROPERTIES; i++) {
 		g_fPropertyValue[block][i] = g_fPropertyDefault[blocktype][i];
