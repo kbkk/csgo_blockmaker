@@ -1,7 +1,7 @@
 public ShowPropertyMenu(client)
 {
 	new Handle:menu = CreateMenu(HandlePropertyMenu);
-	decl String:buffer[256], String:tmp[10];
+	decl String:buffer[256], String:tmp[16];
 
 	new block = g_iClCurrentBlock[client];
 	new blocktype = g_iBlocks[block];
@@ -21,6 +21,26 @@ public ShowPropertyMenu(client)
 		AddMenuItem(menu, tmp, buffer);
 	}
 
+	if(blocktype == _:LOCK && g_Lock[block] != null) {
+		float values[3];
+		int type;
+		g_Lock[block].GetValue("blocktype", type);
+		g_Lock[block].GetArray("properties", values, 3);
+
+		Format(tmp, sizeof tmp, "2137");
+		Format(buffer, sizeof(buffer), "type: %s", BlockNames[type]);
+		AddMenuItem(menu, tmp, buffer);
+
+		for(int i = 0; i < MAXPROPERTIES; i++) {
+			Format(tmp, sizeof tmp, "%i", i+100);
+
+			if(g_sPropertyName[type][i][0] == EOS)
+				break;
+
+			Format(buffer, sizeof(buffer), "%s: %.1f", g_sPropertyName[type][i], values[i]);
+			AddMenuItem(menu, tmp, buffer);
+		}
+	}
 
 	DisplayMenu(menu, client, MENU_TIME_FOREVER);
 }
@@ -40,14 +60,14 @@ public HandlePropertyMenu(Handle:menu, MenuAction:action, client, param2)
 				}
 				default:
 				{
-					decl String:tmp[10], propnum;
+					decl String:tmp[16], propnum;
 					GetMenuItem(menu, param2, tmp, sizeof(tmp));
 					propnum = StringToInt(tmp);
 
 					g_iClInputting[client] = propnum;
 
-					PrintToChat(client, "%s\x04 You are setting\x03 %s\x04 of\x03 %s",
-					PREFIX, g_sPropertyName[blocktype][propnum], BlockNames[blocktype]);
+					//PrintToChat(client, "%s\x04 You are setting\x03 %s\x04 of\x03 %s",
+					//PREFIX, g_sPropertyName[blocktype][propnum], BlockNames[blocktype]);
 				}
 			}
 
