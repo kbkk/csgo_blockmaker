@@ -42,7 +42,9 @@ enum BlockTypes {
 	HE,
 	FLASH,
 	FROST,
-	BUNNYHOP_DELAYED
+	BUNNYHOP_DELAYED,
+	KEY,
+	LOCK
 }
 
 new const String:BlockNames[_:BlockTypes][] = {
@@ -71,7 +73,9 @@ new const String:BlockNames[_:BlockTypes][] = {
 	"HE",
 	"FLASH",
 	"Frost",
-	"Delayed Bunnyhop"
+	"Delayed Bunnyhop",
+	"Key",
+	"Lock"
 }
 
 #define MAXPROPERTIES 3
@@ -105,6 +109,8 @@ new const String:g_sPropertyName[_:BlockTypes][MAXPROPERTIES][64] =
 	{"", "", ""},
 	{"", "", ""},
 	{"Trigger delay", "Cooldown", ""},
+	{"Gives key", "", ""},
+	{"Required key", "", ""},
 };
 
 new const Float:g_fPropertyDefault[_:BlockTypes][MAXPROPERTIES] = {
@@ -133,7 +139,9 @@ new const Float:g_fPropertyDefault[_:BlockTypes][MAXPROPERTIES] = {
 	{0.0, 0.0, 0.0},
 	{0.0, 0.0, 0.0},
 	{0.0, 0.0, 0.0},
-	{1.0, 1.0, 0.0}
+	{1.0, 1.0, 0.0},
+	{0.0, 0.0, 0.0},
+	{0.0, 0.0, 0.0},
 }
 
 new const g_bTopOnlyDefault[_:BlockTypes] =
@@ -163,7 +171,9 @@ new const g_bTopOnlyDefault[_:BlockTypes] =
 	1,
 	1,
 	1,
-	0
+	0,
+	1,
+	1
 };
 
 bool g_bTopOnly[2048];
@@ -270,6 +280,8 @@ bool g_bFlashbangCanUse[MAXPLAYERS + 1] =  { true, ... };
 bool g_bSmokegrenadeCanUse[MAXPLAYERS + 1] =  { true, ... };
 bool g_bSnapping[MAXPLAYERS + 1] =  { false, ... };
 bool g_bGroups[MAXPLAYERS + 1][2048];
+ArrayList g_PlayerKeys[MAXPLAYERS + 1];
+StringMap g_Lock[2048];
 
 
 //GHOST
@@ -400,6 +412,10 @@ public OnPluginStart()
 	CloseHandle(kv);
 
 	g_hBlocksKV = CreateKeyValues("Blocks");
+
+	for(int client = 1; client <= MaxClients; client++) {
+		g_PlayerKeys[client] = new ArrayList();
+	}
 }
 
 public void OnClientPostAdminCheck(client) {
@@ -536,12 +552,40 @@ public Action:OnSayCmd(client, const String:command[], argc)
 	new blocktype = g_iBlocks[block];
 	new propnum = g_iClInputting[client];
 
-	new Float:newval = StringToFloat(arg);
+	float newval = StringToFloat(arg);
 
-	g_fPropertyValue[block][propnum] = newval;
+	if(blocktype == _:LOCK && g_Lock[block] != null && propnum >= 100) {
+		if(propnum == 2137) {
+			int newType = RoundFloat(newval);
+			if(newType < 0 || newType > _:LOCK) {
+				PrintToChat(client, "%s\x04 invalid block number", PREFIX);
+				return Plugin_Continue;
+			}
 
-	PrintToChat(client, "%s\x03 %s\x04 of\x03 %s\x04 changed to\x03 %.2f",
-	PREFIX, g_sPropertyName[blocktype][propnum], BlockNames[blocktype], newval);
+			g_Lock[block].SetValue("blocktype", newType, true);
+			PrintToChat(client, "%s\x04 key\x03 block type set to\x04 %s",
+			PREFIX, BlockNames[newType]);
+		}
+		else {
+			propnum -= 100;
+
+			float values[3];
+			int type;
+			g_Lock[block].GetValue("blocktype", type);
+			g_Lock[block].GetArray("properties", values, 3);
+			values[propnum] = newval;
+			g_Lock[block].SetArray("properties", values, 3, true);
+
+			PrintToChat(client, "%s\x03 %s\x04 of\x03 %s\x04 changed to\x03 %.2f",
+			PREFIX, g_sPropertyName[type][propnum], BlockNames[type], newval);
+		}
+	}
+	else {
+		g_fPropertyValue[block][propnum] = newval;
+
+		PrintToChat(client, "%s\x03 %s\x04 of\x03 %s\x04 changed to\x03 %.2f",
+		PREFIX, g_sPropertyName[blocktype][propnum], BlockNames[blocktype], newval);
+	}
 
 	g_iClInputting[client] = -1;
 	ShowPropertyMenu(client);
@@ -667,6 +711,7 @@ public Action:RoundStart(Handle:event, const String:name[], bool:dontBroadcast)
 		g_bAwpCanUse[i] = true;
 		g_bDeagleCanUse[i] = true;
 		g_bCanUseMoney[i] = true;
+		g_PlayerKeys[i].Clear();
 
 		for(int j = 0; j < 2048; j++)
 			Block_Touching[i][j] = false;
@@ -977,10 +1022,24 @@ SaveBlocks(bool msg = false)
 			if (Block_Transparency[i] > 0)
 				KvSetNum(g_hBlocksKV, "transparency", Block_Transparency[i])
 
-			decl String:propnum[12];
-			for(new j = 0; j < MAXPROPERTIES; j++) {
+			char propnum[16];
+			for(int j = 0; j < MAXPROPERTIES; j++) {
 				Format(propnum, sizeof(propnum), "property%i", j);
 				KvSetFloat(g_hBlocksKV, propnum, g_fPropertyValue[i][j]);
+			}
+
+			if(g_iBlocks[i] == _:LOCK) {
+				float values[3];
+				int lockBlocktype;
+				g_Lock[i].GetValue("blocktype", lockBlocktype);
+				KvSetNum(g_hBlocksKV, "lockBlocktype", lockBlocktype)
+
+				g_Lock[i].GetArray("properties", values, 3);
+
+				for(int j = 0; j < MAXPROPERTIES; j++) {
+					Format(propnum, sizeof(propnum), "subproperty%i", j);
+					KvSetFloat(g_hBlocksKV, propnum, values[j]);
+				}
 			}
 
 			blocks++;
@@ -1045,10 +1104,23 @@ void LoadBlocks(bool msg = false)
 
 			g_bTopOnly[b] = view_as<bool>(KvGetNum(g_hBlocksKV, "toponly"));
 
-			decl String:propnum[12];
-			for(new i = 0; i < MAXPROPERTIES; i++) {
+			char propnum[16];
+			for(int i = 0; i < MAXPROPERTIES; i++) {
 				Format(propnum, sizeof(propnum), "property%i", i);
 				g_fPropertyValue[b][i] = KvGetFloat(g_hBlocksKV, propnum);
+			}
+
+			if(g_iBlocks[b] == _:LOCK) {
+				float values[3];
+				int lockBlocktype = KvGetNum(g_hBlocksKV, "blocktype");
+				g_Lock[b].SetValue("blocktype", lockBlocktype, true);
+
+				for(int i = 0; i < MAXPROPERTIES; i++) {
+					Format(propnum, sizeof(propnum), "subproperty%i", i);
+					values[i] = KvGetFloat(g_hBlocksKV, propnum);
+				}
+
+				g_Lock[b].SetArray("properties", values, 3, true);
 			}
 		}
 	} while (KvGotoNextKey(g_hBlocksKV));
@@ -1638,6 +1710,14 @@ int CreateBlock(int client, int blocktype = 0, int blocksize = _:BLOCK_NORMAL, f
 	SDKHook(block_entity, SDKHook_Touch, OnTouch);
 	SDKHook(block_entity, SDKHook_EndTouch, OnEndTouch);
 
+	if(blocktype == _:LOCK) {
+		delete g_Lock[block_entity];
+		g_Lock[block_entity] = new StringMap();
+		float v[3];
+		g_Lock[block_entity].SetValue("blocktype", _:HONEY);
+		g_Lock[block_entity].SetArray("properties", v, sizeof v);
+	}
+
 	//PrintToChat(client, "%sSuccessfully spawned block \x03%s\x04.", CHAT_TAG, g_eBlocks[g_iBlockSelection[client]][BlockName]);
 	return block_entity;
 }
@@ -1669,13 +1749,13 @@ public Teleport_Action(any:pack) {
 	EmitSoundToAll(REL_TELE_SOUND_PATH, block, SNDCHAN_AUTO);
 }
 
-public Action:OnStartTouch(block, client)
+public Action OnStartTouch(int block, int client)
 {
 	/*if (g_iTeleporters[block] != -1) {
 		return Plugin_Continue;
 	}*/
 
-	if (client > MAXPLAYERS || !IsClientInGame(client)) {
+	if (1 > client > MAXPLAYERS || !IsClientInGame(client)) {
 		return Plugin_Continue;
 	}
 
@@ -1708,6 +1788,28 @@ public Action:OnStartTouch(block, client)
 	if(g_bTriggered[block]) //kinda experimental
 		return Plugin_Continue;
 
+	if(g_iBlocks[block] == _:LOCK)
+	{
+		int key = RoundFloat(g_fPropertyValue[block][0]);
+		if(g_PlayerKeys[client].FindValue(key) != -1)
+		{
+			float values[3];
+			int type;
+			g_Lock[block].GetValue("blocktype", type);
+			g_Lock[block].GetArray("properties", values, 3);
+
+			Block_HandleStartTouch(client, block, type, values);
+		}
+		return Plugin_Continue;
+	}
+
+	Block_HandleStartTouch(client, block, g_iBlocks[block], g_fPropertyValue[block]);
+
+	return Plugin_Continue;
+}
+
+public void Block_HandleStartTouch(int client, int block, int blocktype, float properties[3])
+{
 	bool packUsed = false;
 	DataPack pack = CreateDataPack();
 	pack.WriteCell(client);
@@ -1716,7 +1818,7 @@ public Action:OnStartTouch(block, client)
 	//now this shit is experimental
 	if(!g_bGhost[client])
 	{
-		switch(g_iBlocks[block]) {
+		switch(blocktype) {
 			case DAMAGE: {
 				packUsed = true;
 
@@ -1727,41 +1829,41 @@ public Action:OnStartTouch(block, client)
 				packUsed = true;
 
 				ClearTimer(Block_Timers[client]);
-				Block_Timers[client] = CreateTimer(g_fPropertyValue[block][0], HealPlayer, pack);
+				Block_Timers[client] = CreateTimer(properties[1], HealPlayer, pack);
 			}
 			case BUNNYHOP: {
 				g_bTriggered[block] = true;
-				CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
+				CreateTimer(properties[0], Timer_StartNoBlock, block);
 			}
 			case BUNNYHOP_DELAYED: {
 				g_bTriggered[block] = true;
-				CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
+				CreateTimer(properties[0], Timer_StartNoBlock, block);
 			}
 			case BUNNYHOP_NSD: {
 				g_bTriggered[block] = true;
-				CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
+				CreateTimer(properties[0], Timer_StartNoBlock, block);
 				SetEntPropFloat(client, Prop_Send, "m_flStamina", 0.0);
 			}
 			case BARRIER_CT: {
 				if(GetClientTeam(client) == 2) {
 					g_bTriggered[block] = true;
-					if(g_fPropertyValue[block][0] < 0.05)
+					if(properties[0] < 0.05)
 						StartNoBlock(block);
 					else
-						CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
+						CreateTimer(properties[0], Timer_StartNoBlock, block);
 				}
 			}
 			case BARRIER_T: {
 				if(GetClientTeam(client) == 3) {
 					g_bTriggered[block] = true;
-					if(g_fPropertyValue[block][0] < 0.05)
+					if(properties[0] < 0.05)
 						StartNoBlock(block);
 					else
-						CreateTimer(g_fPropertyValue[block][0], Timer_StartNoBlock, block);
+						CreateTimer(properties[0], Timer_StartNoBlock, block);
 				}
 			}
 			case GRAVITY: {
-				SetEntityGravity(client, g_fPropertyValue[block][0]);
+				SetEntityGravity(client, properties[0]);
 				//SDKHook(client, SDKHook_GroundEntChangedPost, Gravity_GroundEntChanged);
 			}
 			case HONEY: {
@@ -1771,8 +1873,8 @@ public Action:OnStartTouch(block, client)
 				if(g_PlayerEffects[client][Stealth][canUse])
 				{
 					SetEntityRenderMode(client, RENDER_NONE);
-					SetPlayerEffect(client, Stealth, g_fPropertyValue[block][0]/* + float(mm_GetStealthTime(client))*/,
-						g_fPropertyValue[block][1], STEALTH_end, STEALTH_cdEnd);
+					SetPlayerEffect(client, Stealth, properties[0]/* + float(mm_GetStealthTime(client))*/,
+						properties[1], STEALTH_end, STEALTH_cdEnd);
 
 					EmitSoundToAll(REL_STEALTH_SOUND_PATH, block, SNDCHAN_AUTO);
 				}
@@ -1786,8 +1888,8 @@ public Action:OnStartTouch(block, client)
 					SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
 					SetEntityRenderColor(client, 230, 230, 40, 255);
 
-					SetPlayerEffect(client, Invincibility, g_fPropertyValue[block][0]/* + float(mm_GetInvincibilityTime(client))*/,
-						g_fPropertyValue[block][1], INVINCIBLITY_end, INVINCIBLITY_cdEnd);
+					SetPlayerEffect(client, Invincibility, properties[0]/* + float(mm_GetInvincibilityTime(client))*/,
+						properties[1], INVINCIBLITY_end, INVINCIBLITY_cdEnd);
 
 					EmitSoundToAll(REL_INVI_SOUND_PATH, block, SNDCHAN_AUTO);
 				}
@@ -1796,10 +1898,10 @@ public Action:OnStartTouch(block, client)
 
 				if(g_PlayerEffects[client][BootsOfSpeed][canUse])
 				{
-					SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", g_fPropertyValue[block][2] / 250.0);
+					SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", properties[2] / 250.0);
 
-					SetPlayerEffect(client, BootsOfSpeed, g_fPropertyValue[block][0]/* + float(mm_GetBootsTime(client))*/,
-						g_fPropertyValue[block][1], BOOTS_OF_SPEED_end, BOOTS_OF_SPEED_cdEnd);
+					SetPlayerEffect(client, BootsOfSpeed, properties[0]/* + float(mm_GetBootsTime(client))*/,
+						properties[1], BOOTS_OF_SPEED_end, BOOTS_OF_SPEED_cdEnd);
 
 					EmitSoundToAll(REL_BOS_SOUND_PATH, block, SNDCHAN_AUTO);
 				}
@@ -1808,7 +1910,7 @@ public Action:OnStartTouch(block, client)
 
 				if(g_bCanUseMoney[client] && GetClientTeam(client) == CS_TEAM_T)
 				{
-					int money = /*mm_AddMoney(client, RoundFloat(g_fPropertyValue[block][0]), 1.5)*/50;
+					int money = /*mm_AddMoney(client, RoundFloat(properties[0]), 1.5)*/50;
 					PrintToChat(client, "%s\x03 You have received\x04 $%i\03 from the moneyblock!",
 						CHAT_TAG, money);
 
@@ -1820,7 +1922,7 @@ public Action:OnStartTouch(block, client)
 		}
 	}
 
-	switch(g_iBlocks[block])
+	switch(blocktype)
 	{
 		case TRAMPOLINE: {
 			packUsed = true;
@@ -1838,17 +1940,23 @@ public Action:OnStartTouch(block, client)
 			{
 				//has no godmode
 				if (!g_PlayerEffects[client][Invincibility][active]
-					|| g_fPropertyValue[block][0] > 0.5) {
+					|| properties[0] > 0.5) {
 					SDKHooks_TakeDamage(client, 0, 0, 10000.0);
 				}
+			}
+		}
+		case KEY: {
+			int key = RoundFloat(properties[0]);
+			if(g_PlayerKeys[client].FindValue(key) == -1)
+			{
+				g_PlayerKeys[client].Push(key);
+				PrintToChat(client, "%s\x03 You have received a\x04 key\03: \x10%i\x03!", CHAT_TAG, key);
 			}
 		}
 	}
 
 	if(!packUsed)
 		CloseHandle(pack);
-
-	return Plugin_Continue;
 }
 
 public Action Gravity_GroundEntChanged(client)
@@ -2070,7 +2178,7 @@ public Action:DamagePlayer(Handle:timer, any:pack)
 	}
 
 	Block_Timers[client] =
-		CreateTimer(g_fPropertyValue[block][1], DamagePlayer, pack);
+		CreateTimer(GetBlockProperty(block, 1), DamagePlayer, pack);
 
 	if (g_PlayerEffects[client][Invincibility][active])
 		return Plugin_Handled;
@@ -2078,7 +2186,7 @@ public Action:DamagePlayer(Handle:timer, any:pack)
 	/*if (GetClientHealth(client) - 5 > 0)
 		SetEntityHealth(client, GetClientHealth(client) - 5);
 	else*/
-	SDKHooks_TakeDamage(client, 0, 0, g_fPropertyValue[block][0]);
+	SDKHooks_TakeDamage(client, 0, 0, GetBlockProperty(block, 0));
 
 	return Plugin_Handled;
 }
@@ -2139,7 +2247,7 @@ public StartNoBlock(block) {
 	else
 		SetEntityRenderColor(block, 177, 177, 177, 177);
 
-	CreateTimer(g_fPropertyValue[block][1], CancelNoBlock, block);
+	CreateTimer(GetBlockProperty(block, 1), CancelNoBlock, block);
 }
 
 public Action:CancelNoBlock(Handle:timer, any:block)
@@ -2176,9 +2284,9 @@ public Action:HealPlayer(Handle:timer, any:pack)
 	}
 
 	Block_Timers[client] =
-		CreateTimer(g_fPropertyValue[block][1], HealPlayer, pack);
+		CreateTimer(GetBlockProperty(block, 1), HealPlayer, pack);
 
-	new health = RoundFloat(g_fPropertyValue[block][0]);
+	new health = RoundFloat(GetBlockProperty(block, 0));
 
 	if (GetClientHealth(client) + health <= 100) {
 		SetEntityHealth(client, GetClientHealth(client) + health);
@@ -2225,7 +2333,7 @@ public Action STEALTH_cdEnd(Handle timer, any userid)
 	return Plugin_Stop;
 }
 
-public Action:BoostPlayer(Handle:timer, any:pack)
+public Action BoostPlayer(Handle timer, any pack)
 {
 	ResetPack(pack);
 	new client = ReadPackCell(pack);
@@ -2241,14 +2349,14 @@ public Action:BoostPlayer(Handle:timer, any:pack)
 
 	NormalizeVector(fVelocity, fVelocity);
 
-	ScaleVector(fVelocity, g_fPropertyValue[block][1]);
-	fVelocity[2] = g_fPropertyValue[block][0];
+	ScaleVector(fVelocity, GetBlockProperty(block, 1));
+	fVelocity[2] = GetBlockProperty(block, 0);
 	TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, fVelocity);
 
 	return Plugin_Stop;
 }
 
-public Trampoline_Action(any:pack)
+public Trampoline_Action(any pack)
 {
 	ResetPack(pack);
 	new client = ReadPackCell(pack);
@@ -2258,7 +2366,7 @@ public Trampoline_Action(any:pack)
 	new Float:fVelocity[3];
 	GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVelocity);
 
-	fVelocity[2] = g_fPropertyValue[block][0];
+	fVelocity[2] = GetBlockProperty(block, 0);
 	TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, fVelocity);
 }
 
@@ -2919,4 +3027,16 @@ int getRotation(blockType, float vAng[3])
 		else
 			return 0;
 	}
+}
+
+float GetBlockProperty(int block, int num)
+{
+	static float values[3];
+	
+	if(g_iBlocks[block] == _:LOCK) {
+		g_Lock[block].GetArray("properties", values, 3);
+		return values[num];
+	}
+
+	return g_fPropertyValue[block][num];
 }

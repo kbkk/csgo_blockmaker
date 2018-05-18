@@ -216,7 +216,7 @@
 		"effect"	"0"
 	}
 
-  "Frost" // 25
+  	"Frost" // 25
 	{
 		"model_pathprefix"	"models/arclhns"
 		"model_name"		"platform.mdl"
@@ -229,6 +229,24 @@
 	{
 		"model_pathprefix"	"models/arclhns"
 		"model_name"		"delayedbunnyhop.mdl"
+		"sound"		""
+		"cooldown"	"3.0"
+		"effect"	"5.0"
+	}
+
+	"Key" // 27
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
+		"sound"		""
+		"cooldown"	"3.0"
+		"effect"	"5.0"
+	}
+
+	"Lock" // 28
+	{
+		"model_pathprefix"	"models/arclhns"
+		"model_name"		"platform.mdl"
 		"sound"		""
 		"cooldown"	"3.0"
 		"effect"	"5.0"
