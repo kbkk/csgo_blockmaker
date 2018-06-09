@@ -1920,6 +1920,33 @@ public void Block_HandleStartTouch(int client, int block, int blocktype, float p
 					g_bCanUseMoney[client] = false;
 				}
 			}
+			case HE: {
+
+				if(GetClientTeam(client) == CS_TEAM_T && g_bHEgrenadeCanUse[client])
+				{
+					GivePlayerItem(client, "weapon_hegrenade");
+
+					g_bHEgrenadeCanUse[client] = false;
+				}
+			}
+			case FROST: {
+
+				if(GetClientTeam(client) == CS_TEAM_T && g_bSmokegrenadeCanUse[client])
+				{
+					GivePlayerItem(client, "weapon_smokegrenade");
+
+					g_bSmokegrenadeCanUse[client] = false;
+				}
+			}
+			case FLASH: {
+
+				if(GetClientTeam(client) == CS_TEAM_T && g_bFlashbangCanUse[client])
+				{
+					GivePlayerItem(client, "weapon_flashbang");
+
+					g_bFlashbangCanUse[client] = false;
+				}
+			}
 		}
 	}
 
