@@ -6,7 +6,7 @@ public Action BOOTS_OF_SPEED_end(Handle timer, any userid)
 		return Plugin_Stop;
 
 	g_PlayerEffects[client][BootsOfSpeed][active] = false;
-	SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.0);
+	SetEntPropFloat(client, Prop_Data, "m_flVelocityModifier", 1.0);
 
 	PrintToChat(client, "\x03%s\x04 Boots of speed\x01 has worn off.", CHAT_TAG);
 

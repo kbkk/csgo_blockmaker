@@ -1112,7 +1112,7 @@ void LoadBlocks(bool msg = false)
 
 			if(g_iBlocks[b] == _:LOCK) {
 				float values[3];
-				int lockBlocktype = KvGetNum(g_hBlocksKV, "blocktype");
+				int lockBlocktype = KvGetNum(g_hBlocksKV, "lockBlocktype");
 				g_Lock[b].SetValue("blocktype", lockBlocktype, true);
 
 				for(int i = 0; i < MAXPROPERTIES; i++) {
@@ -1898,7 +1898,8 @@ public void Block_HandleStartTouch(int client, int block, int blocktype, float p
 
 				if(g_PlayerEffects[client][BootsOfSpeed][canUse])
 				{
-					SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", properties[2] / 250.0);
+					float newSpeedMultiplier = properties[2] / 250.0;
+					SetEntPropFloat(client, Prop_Send, "m_flVelocityModifier",  newSpeedMultiplier);
 
 					SetPlayerEffect(client, BootsOfSpeed, properties[0]/* + float(mm_GetBootsTime(client))*/,
 						properties[1], BOOTS_OF_SPEED_end, BOOTS_OF_SPEED_cdEnd);
@@ -3040,3 +3041,7 @@ float GetBlockProperty(int block, int num)
 
 	return g_fPropertyValue[block][num];
 }
+
+stock any:MathMin(any:a, any:b) { return a < b ? a : b; }
+
+stock any:MathMax(any:a, any:b) { return a > b ? a : b; }
