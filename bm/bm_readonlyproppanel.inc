@@ -32,7 +32,23 @@ public ShowReadOnlyPropertyPanel(client, block) {
 		if(g_sPropertyName[blocktype][i][0] == EOS)
 			break;
 
-		Format(buffer, sizeof(buffer), "%s: %.1f", g_sPropertyName[blocktype][i], g_fPropertyValue[block][i]);
+		float propValue = g_fPropertyValue[block][i];
+
+		if(blocktype == _:WEAPON && i == 0)
+		{
+			Format(
+				buffer,
+				sizeof buffer,
+				"%s: %s",
+				g_sPropertyName[blocktype][i],
+				g_sWeapons[RoundFloat(propValue)]
+			);
+		}
+		else
+		{
+			Format(buffer, sizeof(buffer), "%s: %.1f", g_sPropertyName[blocktype][i], propValue);
+		}
+
 		panel.DrawItem(buffer);
 	}
 

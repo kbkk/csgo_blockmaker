@@ -16,6 +16,15 @@
 #define PREFIX "\x03[TeamMates]\x04 "
 #define MESS "[TeamMates] %s"
 
+#define ALL_WEAPONS 33
+
+new const String:g_sWeapons[33][] = {
+	"weapon_ak47", "weapon_revolver", "weapon_aug", "weapon_bizon", "weapon_deagle", "weapon_awp", "weapon_elite", "weapon_famas", "weapon_fiveseven", "weapon_cz75a",
+	"weapon_g3sg1", "weapon_galilar", "weapon_glock", "weapon_hkp2000", "weapon_usp_silencer", "weapon_m249", "weapon_m4a1",
+	"weapon_mac10", "weapon_mag7", "weapon_mp7", "weapon_mp9", "weapon_negev", "weapon_nova", "weapon_p250", "weapon_p90", "weapon_sawedoff",
+	"weapon_scar20", "weapon_sg556", "weapon_ssg08", "weapon_taser", "weapon_tec9", "weapon_ump45", "weapon_xm1014"
+};
+
 enum BlockTypes {
 	PLATFORM,
 	BUNNYHOP,
@@ -36,7 +45,7 @@ enum BlockTypes {
 	MONEY,
 	HONEY,
 	CAMOUFLAGE,
-	DEAGLE,
+	WEAPON,
 	AWP,
 	RANDOM,
 	HE,
@@ -67,7 +76,7 @@ new const String:BlockNames[_:BlockTypes][] = {
 	"Money",
 	"Honey",
 	"CAMOUFLAGE",
-	"DEAGLE",
+	"WEAPON",
 	"AWP",
 	"RANDOM",
 	"HE",
@@ -102,7 +111,7 @@ new const String:g_sPropertyName[_:BlockTypes][MAXPROPERTIES][64] =
 	{"Money", "", ""},
 	{"", "", ""},
 	{"", "", ""},
-	{"", "", ""},
+	{"Weapon", "", ""},
 	{"", "", ""},
 	{"", "", ""},
 	{"", "", ""},
@@ -273,11 +282,12 @@ bool g_bNoFallDmg[MAXPLAYERS + 1] =  { false, ... };
 bool g_bLocked[MAXPLAYERS + 1] =  { false, ... };
 bool g_bTriggered[2048] =  { false, ... };
 bool g_bCamCanUse[MAXPLAYERS + 1] =  { true, ... };
-bool g_bDeagleCanUse[MAXPLAYERS + 1] =  { true, ... };
 bool g_bAwpCanUse[MAXPLAYERS + 1] =  { true, ... };
 bool g_bHEgrenadeCanUse[MAXPLAYERS + 1] =  { true, ... };
 bool g_bFlashbangCanUse[MAXPLAYERS + 1] =  { true, ... };
 bool g_bSmokegrenadeCanUse[MAXPLAYERS + 1] =  { true, ... };
+bool g_bWeaponUsed[MAXPLAYERS + 1][ALL_WEAPONS];
+
 bool g_bSnapping[MAXPLAYERS + 1] =  { false, ... };
 bool g_bGroups[MAXPLAYERS + 1][2048];
 ArrayList g_PlayerKeys[MAXPLAYERS + 1];
@@ -709,9 +719,11 @@ public Action:RoundStart(Handle:event, const String:name[], bool:dontBroadcast)
 		g_bNoFallDmg[i] = false;
 		g_bCamCanUse[i] = true;
 		g_bAwpCanUse[i] = true;
-		g_bDeagleCanUse[i] = true;
 		g_bCanUseMoney[i] = true;
 		g_PlayerKeys[i].Clear();
+
+		for(int j = 0; j < ALL_WEAPONS; j++)
+			g_bWeaponUsed[i][j] = false;
 
 		for(int j = 0; j < 2048; j++)
 			Block_Touching[i][j] = false;
@@ -733,7 +745,6 @@ public OnClientPutInServer(client)
 	g_bNoFallDmg[client] = false;
 	g_bCamCanUse[client] = true;
 	g_bAwpCanUse[client] = true;
-	g_bDeagleCanUse[client] = true;
 	g_bHEgrenadeCanUse[client] = true;
 	g_bFlashbangCanUse[client] = true;
 	//	g_iClientBlocks[client]=-1;
@@ -742,6 +753,9 @@ public OnClientPutInServer(client)
 	g_fSnappingGap[client] = 0.0;
 
 	g_bGhost[client] = false;
+
+	for(int j = 0; j < ALL_WEAPONS; j++)
+		g_bWeaponUsed[client][j] = false;
 
 	for (new i = 0; i < 2048; ++i)
 		g_bGroups[client][i] = false;
@@ -1898,8 +1912,11 @@ public void Block_HandleStartTouch(int client, int block, int blocktype, float p
 
 				if(g_PlayerEffects[client][BootsOfSpeed][canUse])
 				{
-					float newSpeedMultiplier = properties[2] / 250.0;
-					SetEntPropFloat(client, Prop_Send, "m_flVelocityModifier",  newSpeedMultiplier);
+					//float newSpeedMultiplier = properties[2] / 250.0;
+					//SetEntPropFloat(client, Prop_Send, "m_flVelocityModifier",  newSpeedMultiplier);
+					SetEntPropFloat(client, Prop_Send, "m_flVelocityModifier",  0.15);
+					SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue",  1.5);
+					
 
 					SetPlayerEffect(client, BootsOfSpeed, properties[0]/* + float(mm_GetBootsTime(client))*/,
 						properties[1], BOOTS_OF_SPEED_end, BOOTS_OF_SPEED_cdEnd);
@@ -1945,6 +1962,22 @@ public void Block_HandleStartTouch(int client, int block, int blocktype, float p
 					GivePlayerItem(client, "weapon_flashbang");
 
 					g_bFlashbangCanUse[client] = false;
+				}
+			}
+			case WEAPON: {
+				int weaponIndex = RoundFloat(properties[0]);
+
+				if(GetClientTeam(client) == CS_TEAM_T && !g_bWeaponUsed[client][weaponIndex])
+				{
+					int ent = GivePlayerItem(client, g_sWeapons[weaponIndex]);
+					
+					if(IsValidEntity(ent))
+					{
+						SetEntProp(ent, Prop_Data, "m_iClip1", 1);
+						SetEntProp(ent, Prop_Send, "m_iPrimaryReserveAmmoCount", 0);
+					}
+
+					g_bWeaponUsed[client][weaponIndex] = true;
 				}
 			}
 		}

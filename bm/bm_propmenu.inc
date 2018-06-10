@@ -47,6 +47,8 @@ public ShowPropertyMenu(client)
 
 public HandlePropertyMenu(Handle:menu, MenuAction:action, client, param2)
 {
+	bool refreshMenu = true;
+
 	switch (action)
 	{
 		case MenuAction_Select:
@@ -56,7 +58,7 @@ public HandlePropertyMenu(Handle:menu, MenuAction:action, client, param2)
 
 			switch(param2) {
 				case 0: {
-					g_bTopOnly[g_iClCurrentBlock[client]] = !g_bTopOnly[g_iClCurrentBlock[client]];
+					g_bTopOnly[block] = !g_bTopOnly[block];
 				}
 				default:
 				{
@@ -64,18 +66,61 @@ public HandlePropertyMenu(Handle:menu, MenuAction:action, client, param2)
 					GetMenuItem(menu, param2, tmp, sizeof(tmp));
 					propnum = StringToInt(tmp);
 
-					g_iClInputting[client] = propnum;
+					if(propnum == 0 && blocktype == _:WEAPON)
+					{
+						WeaponsMenu(client);
+						refreshMenu = false;
+					}
+					else 
+					{
+						g_iClInputting[client] = propnum;
+					}
 
 					//PrintToChat(client, "%s\x04 You are setting\x03 %s\x04 of\x03 %s",
 					//PREFIX, g_sPropertyName[blocktype][propnum], BlockNames[blocktype]);
 				}
 			}
 
-			ShowPropertyMenu(client);
+			if(refreshMenu) {
+				ShowPropertyMenu(client);
+			}
 		}
 		case MenuAction_End:
 		{
 			CloseHandle(menu);
 		}
 	}
+}
+
+public void WeaponsMenu(client) {
+	new Handle:hMenu = CreateMenu(WeaponsMenu_Handle);
+	SetMenuTitle(hMenu, "Property - Choose Weapon");
+	
+	char tmp[16];
+	for (int i = 0; i < ALL_WEAPONS; i++) {
+		IntToString(i, tmp, sizeof tmp);
+		AddMenuItem(hMenu, tmp, g_sWeapons[i][7]);
+	}
+	
+	SetMenuExitButton(hMenu, true);
+	DisplayMenu(hMenu, client, MENU_TIME_FOREVER);
+}
+
+public WeaponsMenu_Handle(Handle hMenu, MenuAction action, client, param2) {
+	if(action == MenuAction_Select){
+		new block = g_iClCurrentBlock[client];
+		new blocktype = g_iBlocks[block];
+		
+		char tmp[16];
+		float weapon;
+		GetMenuItem(hMenu, param2, tmp, sizeof tmp);
+		weapon = StringToFloat(tmp);
+
+		g_fPropertyValue[block][0] = weapon;
+	}  
+	if(action == MenuAction_End){
+		CloseHandle(hMenu);
+	}
+
+	ShowPropertyMenu(client);
 }
