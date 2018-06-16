@@ -2254,7 +2254,7 @@ public Action:DamagePlayer(Handle:timer, any:pack)
 	/*if (GetClientHealth(client) - 5 > 0)
 		SetEntityHealth(client, GetClientHealth(client) - 5);
 	else*/
-	SDKHooks_TakeDamage(client, 0, 0, GetBlockProperty(block, 0));
+	SDKHooks_TakeDamage(client, 0, 0, GetBlockProperty(block, 0), DMG_DIRECT);
 
 	if(Block_Touching[client][block] == false) {
 		ClearTimer(Block_Timers[client]);
