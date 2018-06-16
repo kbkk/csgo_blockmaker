@@ -2228,8 +2228,7 @@ public Action:DamagePlayer(Handle:timer, any:pack)
 	new block = ReadPackCell(pack);
 
 	if(!IsClientInGame(client)
-	|| !IsPlayerAlive(client)
-	|| Block_Touching[client][block] == false) {
+	|| !IsPlayerAlive(client)) {
 		ClearTimer(Block_Timers[client]);
 		CloseHandle(pack);
 		return Plugin_Handled;
@@ -2245,6 +2244,11 @@ public Action:DamagePlayer(Handle:timer, any:pack)
 		SetEntityHealth(client, GetClientHealth(client) - 5);
 	else*/
 	SDKHooks_TakeDamage(client, 0, 0, GetBlockProperty(block, 0));
+
+	if(Block_Touching[client][block] == false) {
+		ClearTimer(Block_Timers[client]);
+		CloseHandle(pack);
+	}
 
 	return Plugin_Handled;
 }
