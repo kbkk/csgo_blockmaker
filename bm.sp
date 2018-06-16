@@ -1912,11 +1912,8 @@ public void Block_HandleStartTouch(int client, int block, int blocktype, float p
 
 				if(g_PlayerEffects[client][BootsOfSpeed][canUse])
 				{
-					//float newSpeedMultiplier = properties[2] / 250.0;
-					//SetEntPropFloat(client, Prop_Send, "m_flVelocityModifier",  newSpeedMultiplier);
-					SetEntPropFloat(client, Prop_Send, "m_flVelocityModifier",  0.15);
-					SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue",  1.5);
-					
+					float newSpeedMultiplier = properties[2] / 250.0;
+					SetEntPropFloat(client, Prop_Send, "m_flVelocityModifier",  newSpeedMultiplier);
 
 					SetPlayerEffect(client, BootsOfSpeed, properties[0]/* + float(mm_GetBootsTime(client))*/,
 						properties[1], BOOTS_OF_SPEED_end, BOOTS_OF_SPEED_cdEnd);
