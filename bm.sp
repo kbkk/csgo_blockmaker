@@ -18,11 +18,18 @@
 
 #define ALL_WEAPONS 33
 
-new const String:g_sWeapons[33][] = {
+new const String:g_sWeapons[ALL_WEAPONS][] = {
 	"weapon_ak47", "weapon_revolver", "weapon_aug", "weapon_bizon", "weapon_deagle", "weapon_awp", "weapon_elite", "weapon_famas", "weapon_fiveseven", "weapon_cz75a",
 	"weapon_g3sg1", "weapon_galilar", "weapon_glock", "weapon_hkp2000", "weapon_usp_silencer", "weapon_m249", "weapon_m4a1",
 	"weapon_mac10", "weapon_mag7", "weapon_mp7", "weapon_mp9", "weapon_negev", "weapon_nova", "weapon_p250", "weapon_p90", "weapon_sawedoff",
 	"weapon_scar20", "weapon_sg556", "weapon_ssg08", "weapon_taser", "weapon_tec9", "weapon_ump45", "weapon_xm1014"
+};
+
+new g_iWeaponSlot[ALL_WEAPONS] = {
+	CS_SLOT_PRIMARY, CS_SLOT_SECONDARY, CS_SLOT_PRIMARY, CS_SLOT_PRIMARY, CS_SLOT_SECONDARY, CS_SLOT_PRIMARY, CS_SLOT_SECONDARY, CS_SLOT_PRIMARY, CS_SLOT_SECONDARY, CS_SLOT_SECONDARY,
+	CS_SLOT_PRIMARY, CS_SLOT_PRIMARY, CS_SLOT_SECONDARY, CS_SLOT_SECONDARY, CS_SLOT_SECONDARY, CS_SLOT_PRIMARY, CS_SLOT_PRIMARY,
+	CS_SLOT_PRIMARY, CS_SLOT_PRIMARY, CS_SLOT_PRIMARY, CS_SLOT_PRIMARY, CS_SLOT_PRIMARY, CS_SLOT_PRIMARY, CS_SLOT_SECONDARY, CS_SLOT_PRIMARY, CS_SLOT_PRIMARY,
+	CS_SLOT_PRIMARY, CS_SLOT_PRIMARY, CS_SLOT_PRIMARY, CS_SLOT_KNIFE, CS_SLOT_SECONDARY, CS_SLOT_PRIMARY, CS_SLOT_PRIMARY
 };
 
 enum BlockTypes {
@@ -1966,15 +1973,19 @@ public void Block_HandleStartTouch(int client, int block, int blocktype, float p
 
 				if(GetClientTeam(client) == CS_TEAM_T && !g_bWeaponUsed[client][weaponIndex])
 				{
-					int ent = GivePlayerItem(client, g_sWeapons[weaponIndex]);
-					
-					if(IsValidEntity(ent))
+					int slot = g_iWeaponSlot[weaponIndex];
+					if(GetPlayerWeaponSlot(client, slot) == -1) 
 					{
-						SetEntProp(ent, Prop_Data, "m_iClip1", 1);
-						SetEntProp(ent, Prop_Send, "m_iPrimaryReserveAmmoCount", 0);
-					}
+						int ent = GivePlayerItem(client, g_sWeapons[weaponIndex]);
+						
+						if(IsValidEntity(ent))
+						{
+							SetEntProp(ent, Prop_Data, "m_iClip1", 1);
+							SetEntProp(ent, Prop_Send, "m_iPrimaryReserveAmmoCount", 0);
 
-					g_bWeaponUsed[client][weaponIndex] = true;
+							g_bWeaponUsed[client][weaponIndex] = true;
+						}
+					}
 				}
 			}
 		}
