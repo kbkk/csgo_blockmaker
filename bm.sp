@@ -1776,7 +1776,7 @@ public Action OnStartTouch(int block, int client)
 		return Plugin_Continue;
 	}*/
 
-	if (1 > client > MAXPLAYERS || !IsClientInGame(client)) {
+	if ((1 > client > MAXPLAYERS) || !IsClientInGame(client)) {
 		return Plugin_Continue;
 	}
 
@@ -1982,6 +1982,7 @@ public void Block_HandleStartTouch(int client, int block, int blocktype, float p
 						{
 							SetEntProp(ent, Prop_Data, "m_iClip1", 1);
 							SetEntProp(ent, Prop_Send, "m_iPrimaryReserveAmmoCount", 0);
+							CreateTimer(0.1, WEAPON_SetAmmo, ent);
 
 							g_bWeaponUsed[client][weaponIndex] = true;
 						}
@@ -2049,6 +2050,15 @@ public Action Honey_GroundEntChanged(client)
 	if(ground != 0) {
 		SDKUnhook(client, SDKHook_GroundEntChangedPost, Honey_GroundEntChanged);
 		SDKUnhook(client, SDKHook_PostThink, Honey_OnPostThink);
+	}
+}
+
+public Action WEAPON_SetAmmo(Handle timer, any weapon)
+{
+	if(IsValidEntity(weapon))
+	{
+		SetEntProp(weapon, Prop_Data, "m_iClip1", 1);
+		SetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount", 0);
 	}
 }
 
