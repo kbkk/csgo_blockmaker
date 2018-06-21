@@ -12,9 +12,9 @@
 #include <cstrike>
 //#include <mm>
 
-#define CHAT_TAG "[TeamMates]"
-#define PREFIX "\x03[TeamMates]\x04 "
-#define MESS "[TeamMates] %s"
+#define CHAT_TAG "[ColoursNet]"
+#define PREFIX "\x03[ColoursNet]\x04 "
+#define MESS "[ColoursNet] %s"
 
 #define ALL_WEAPONS 33
 
@@ -801,7 +801,7 @@ public Action DisplayEffectsHud(Handle timer)
 
 		if(print)
 		{
-			Format(buffer, sizeof(buffer), "<font color='#47BEE6'>Team-Mates</font><br>%s", buffer);
+			Format(buffer, sizeof(buffer), "<font color='#47BEE6'>%s</font><br>%s", CHAT_TAG, buffer);
 			PrintHintText(client, buffer);
 		}
 
@@ -1776,7 +1776,7 @@ public Action OnStartTouch(int block, int client)
 		return Plugin_Continue;
 	}*/
 
-	if ((1 > client > MAXPLAYERS) || !IsClientInGame(client)) {
+	if (client < 1 || client > MAXPLAYERS || !IsClientInGame(client)) {
 		return Plugin_Continue;
 	}
 
