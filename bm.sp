@@ -10,7 +10,7 @@
 #include <sdkhooks>
 #include <smlib>
 #include <cstrike>
-//#include <mm>
+#include <mm>
 
 #define CHAT_TAG "[ColoursNet]"
 #define PREFIX "\x03[ColoursNet]\x04 "
@@ -1932,7 +1932,7 @@ public void Block_HandleStartTouch(int client, int block, int blocktype, float p
 
 				if(g_bCanUseMoney[client] && GetClientTeam(client) == CS_TEAM_T)
 				{
-					int money = /*mm_AddMoney(client, RoundFloat(properties[0]), 1.5)*/50;
+					int money = mm_AddMoney(client, RoundFloat(properties[0]), 1.5);
 					PrintToChat(client, "%s\x03 You have received\x04 $%i\03 from the moneyblock!",
 						CHAT_TAG, money);
 
